@@ -1,0 +1,10 @@
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "app.vercel.team3examen.twa",
+    "sha256_cert_fingerprints": [
+      "D6:17:84:CC:84:FD:72:DB:F3:95:7C:8B:F8:60:39:E2:F7:B6:DD:CB:C7:F1:0C:2E:21:C6:B2:A1:6D:0C:EF:11"
+    ]
+  }
+}]
