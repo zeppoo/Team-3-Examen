@@ -39,6 +39,11 @@ function createWebSocketStore() {
 		lobbyInfo = null;
 	}
 
+	function bypassForTesting() {
+		status = 'connected';
+		lobbyInfo = { ip: '0.0.0.0', port: 0, lobby: 'dev' };
+	}
+
 	return {
 		get status() {
 			return status;
@@ -48,7 +53,8 @@ function createWebSocketStore() {
 		},
 		connect,
 		send,
-		disconnect
+		disconnect,
+		bypassForTesting
 	};
 }
 

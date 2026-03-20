@@ -10,6 +10,9 @@ export default defineConfig({
 		sveltekit(),
 		SvelteKitPWA({
 			registerType: 'autoUpdate',
+			workbox: {
+				navigateFallback: '/'
+			},
 			manifest: {
 				name: 'Unity Game Controller',
 				short_name: 'GameCtrl',

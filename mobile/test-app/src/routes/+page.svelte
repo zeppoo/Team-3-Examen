@@ -66,6 +66,11 @@
 		scanning = false;
 	}
 
+	function devBypass() {
+		ws.bypassForTesting();
+		goto('/controller');
+	}
+
 	function handleQR(raw: string) {
 		try {
 			const data = JSON.parse(raw) as { ip: string; port: number; lobby: string };
@@ -101,6 +106,15 @@
 			class="rounded-2xl bg-gray-700 px-8 py-4 text-lg font-semibold active:bg-gray-600"
 		>
 			Cancel
+		</button>
+	{/if}
+
+	{#if import.meta.env.DEV && !scanning}
+		<button
+			onclick={devBypass}
+			class="rounded-xl border border-dashed border-gray-600 px-6 py-3 text-sm text-gray-400 active:bg-gray-800"
+		>
+			[Dev] Skip to controller
 		</button>
 	{/if}
 
