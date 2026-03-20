@@ -74,11 +74,13 @@
 	function handleQR(raw: string) {
 		try {
 			const data = JSON.parse(raw) as { ip: string; port: number; lobby: string };
-			if (!data.ip || !data.port || !data.lobby) throw new Error();
+			if (!data.ip) { error = `Missing "ip" in: ${raw}`; return; }
+			if (!data.port) { error = `Missing "port" in: ${raw}`; return; }
+			if (!data.lobby) { error = `Missing "lobby" in: ${raw}`; return; }
 			ws.connect(data.ip, data.port, data.lobby);
 			goto('/controller');
 		} catch {
-			error = 'Invalid QR code. Expected {"ip","port","lobby"}.';
+			error = `JSON parse failed for: ${raw}`;
 		}
 	}
 </script>
