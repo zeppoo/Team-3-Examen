@@ -12,7 +12,8 @@ function createWebSocketStore() {
 		status = 'connecting';
 		lobbyInfo = { ip, port, lobby };
 
-		socket = new WebSocket(`ws://${ip}:${port}`);
+		const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
+		socket = new WebSocket(`${protocol}://${ip}:${port}`);
 
 		socket.onopen = () => {
 			status = 'connected';

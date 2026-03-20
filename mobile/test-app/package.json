@@ -5,6 +5,7 @@
 	"type": "module",
 	"scripts": {
 		"dev": "vite dev",
+		"proxy": "node wss-proxy.mjs",
 		"build": "vite build",
 		"preview": "vite preview",
 		"prepare": "svelte-kit sync || echo ''",
@@ -12,6 +13,9 @@
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
 		"test:unit": "vitest",
 		"test": "npm run test:unit -- --run"
+	},
+	"dependencies": {
+		"ws": "^8.18.0"
 	},
 	"devDependencies": {
 		"@sveltejs/adapter-auto": "^7.0.0",

@@ -71,17 +71,66 @@
 		goto('/controller');
 	}
 
-	function handleQR(raw: string) {
-		try {
-			const data = JSON.parse(raw) as { ip: string; port: number; lobby: string };
-			if (!data.ip) { error = `Missing "ip" in: ${raw}`; return; }
-			if (!data.port) { error = `Missing "port" in: ${raw}`; return; }
-			if (!data.lobby) { error = `Missing "lobby" in: ${raw}`; return; }
-			ws.connect(data.ip, data.port, data.lobby);
-			goto('/controller');
-		} catch {
-			error = `JSON parse failed for: ${raw}`;
+	async function scanFromImage(e: Event) {
+		error = null;
+		const file = (e.target as HTMLInputElement).files?.[0];
+		if (!file) return;
+
+		if (!('BarcodeDetector' in window)) {
+			error = 'BarcodeDetector not supported — use Chrome on desktop or Android.';
+			return;
 		}
+
+		const img = new Image();
+		const objectUrl = URL.createObjectURL(file);
+		img.src = objectUrl;
+		await new Promise((res) => (img.onload = res));
+
+		// @ts-expect-error BarcodeDetector not yet in TS lib
+		const detector = new BarcodeDetector({ formats: ['qr_code'] });
+
+		let codes: { rawValue: string }[] = [];
+		try {
+			codes = await detector.detect(img);
+		} catch (e) {
+			error = `Detector threw: ${e}`;
+			URL.revokeObjectURL(objectUrl);
+			return;
+		}
+		URL.revokeObjectURL(objectUrl);
+
+		if (codes.length === 0) {
+			error = `No QR found in image (${img.width}×${img.height}px). Try a clearer/larger image.`;
+			return;
+		}
+
+		error = `Raw value: "${codes[0].rawValue}"`;
+		handleQR(codes[0].rawValue);
+	}
+
+	function handleQR(raw: string) {
+		const cleaned = raw.replace(/[^\x20-\x7E]/g, '');
+
+		let data: { ip: string; port: number | string; lobby: string };
+		try {
+			data = JSON.parse(cleaned);
+		} catch (e) {
+			error = `JSON.parse failed: ${e}. Input: "${cleaned}"`;
+			return;
+		}
+
+		if (!data.ip) { error = `Missing "ip" in: ${cleaned}`; return; }
+		if (!data.port) { error = `Missing "port" in: ${cleaned}`; return; }
+		if (!data.lobby) { error = `Missing "lobby" in: ${cleaned}`; return; }
+
+		try {
+			ws.connect(data.ip, Number(data.port), data.lobby);
+		} catch (e) {
+			error = `ws.connect failed: ${e}`;
+			return;
+		}
+
+		goto('/controller');
 	}
 </script>
 
@@ -112,12 +161,18 @@
 	{/if}
 
 	{#if import.meta.env.DEV && !scanning}
-		<button
-			onclick={devBypass}
-			class="rounded-xl border border-dashed border-gray-600 px-6 py-3 text-sm text-gray-400 active:bg-gray-800"
-		>
-			[Dev] Skip to controller
-		</button>
+		<div class="flex flex-col items-center gap-3">
+			<button
+				onclick={devBypass}
+				class="rounded-xl border border-dashed border-gray-600 px-6 py-3 text-sm text-gray-400 active:bg-gray-800"
+			>
+				[Dev] Skip to controller
+			</button>
+			<label class="cursor-pointer rounded-xl border border-dashed border-gray-600 px-6 py-3 text-sm text-gray-400 active:bg-gray-800">
+				[Dev] Scan QR from image
+				<input type="file" accept="image/*" class="hidden" onchange={scanFromImage} />
+			</label>
+		</div>
 	{/if}
 
 	{#if error}

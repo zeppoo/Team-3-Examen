@@ -29,10 +29,16 @@ public class LobbyDisplay : MonoBehaviour
     [Tooltip("Human-readable lobby name embedded in the QR payload.")]
     public string lobbyName = "game";
 
+    [Tooltip("Port advertised in the QR code. Set to 8443 when running the wss-proxy, or match WebSocketServer.port for direct connections.")]
+    public int advertisedPort = 8443;
+
     [Header("QR Visual")]
     [Tooltip("Pixels per QR module (higher = bigger image).")]
     [Range(4, 32)]
-    public int pixelsPerModule = 10;
+    public int pixelsPerModule = 16;
+
+    [Tooltip("Save the QR code as a PNG next to the executable for debugging.")]
+    public bool saveQRToDisk = true;
 
     private WebSocketServer _server;
 
@@ -70,7 +76,7 @@ public class LobbyDisplay : MonoBehaviour
     private void RefreshQRCode()
     {
         string ip   = _server.LocalIP;
-        int    port = _server.port;
+        int    port = advertisedPort > 0 ? advertisedPort : _server.port;
 
         // Payload expected by the mobile app
         string payload = BuildPayload(ip, port, lobbyName);
@@ -89,7 +95,14 @@ public class LobbyDisplay : MonoBehaviour
                 qrImage.texture = tex;
                 qrImage.SetNativeSize();
             }
-            Debug.Log($"[LobbyDisplay] QR generated for: {payload}");
+            Debug.Log($"[LobbyDisplay] QR payload: {payload}");
+
+            if (saveQRToDisk)
+            {
+                string path = System.IO.Path.Combine(Application.persistentDataPath, "lobby_qr.png");
+                System.IO.File.WriteAllBytes(path, tex.EncodeToPNG());
+                Debug.Log($"[LobbyDisplay] QR saved to: {path}");
+            }
         }
         catch (Exception ex)
         {
