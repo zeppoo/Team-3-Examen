@@ -72,22 +72,28 @@ public class PlayerHandGenerator : MonoBehaviour
             int amountToGive = playerSymbolCounts[i];
             int assignedCount = 0;
 
-            Image[] childImages = player.GetComponentsInChildren<Image>();
+            Image[] childImages = player.GetComponentsInChildren<Image>(true); 
             
             foreach (Image img in childImages)
             {
-               
-                if (assignedCount >= amountToGive) break;
-                if (availableSymbols.Count == 0) break;
-
                 
                 if (img.gameObject == player) continue;
 
-                int randomIndex = Random.Range(0, availableSymbols.Count);
-                img.sprite = availableSymbols[randomIndex];
-                availableSymbols.RemoveAt(randomIndex);   
+                
+                if (assignedCount < amountToGive && availableSymbols.Count > 0)
+                {
+                    int randomIndex = Random.Range(0, availableSymbols.Count);
+                    img.sprite = availableSymbols[randomIndex];
+                    availableSymbols.RemoveAt(randomIndex);   
 
-                assignedCount++;
+                    img.gameObject.SetActive(true); 
+                    assignedCount++;
+                }
+                else
+                {
+                    
+                    img.gameObject.SetActive(false);
+                }
             }
         }
     }

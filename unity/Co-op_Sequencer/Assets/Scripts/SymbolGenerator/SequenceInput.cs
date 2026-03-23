@@ -2,47 +2,45 @@ using System.Collections;
 using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.EventSystems;
 
-public class SequenceInput : MonoBehaviour
+public class SequenceInput : MonoBehaviour, IPointerClickHandler
 {
-
     private SymbolSequenceMaker symbolSequenceMaker;
-    private Sprite currentSprite;
-    
-
-
 
     void Start()
     {
         symbolSequenceMaker = GameObject.Find("SymbolSequenceMaker").GetComponent<SymbolSequenceMaker>();
-
-        StartCoroutine(GetImage());
-
     }
 
-   IEnumerator GetImage()
+
+    public void OnPointerClick(PointerEventData eventData)
     {
-        yield return new WaitForSeconds(0.1f);
-        currentSprite = GetComponent<Image>().sprite;
-    }
 
-    public void IconPressed()
-    {
-        
-        Sprite targetSprite = symbolSequenceMaker.availableSymbols[symbolSequenceMaker.nextSymbol];
-        Debug.Log("Target Sprite: " + targetSprite.name);
+        if (symbolSequenceMaker.allowInput)
+        {
+            Sprite targetSprite = symbolSequenceMaker.availableSymbols[symbolSequenceMaker.nextSymbol];
+            Sprite currentSprite = GetComponent<Image>().sprite;
 
-        if (currentSprite == targetSprite) 
-        {
-            Debug.Log("Good sprite");
-                symbolSequenceMaker.nextSymbol++;
+            bool isCorrect = (currentSprite == targetSprite);
+
+
+            symbolSequenceMaker.clickResults.Add(isCorrect);
+
+            if (isCorrect)
+            {
+                symbolSequenceMaker.MarkSymbolAsFound(symbolSequenceMaker.nextSymbol, Color.darkGray);
+                symbolSequenceMaker.correctSymbols.Add(currentSprite);
+            }
+            else
+            {
+                symbolSequenceMaker.MarkSymbolAsFound(symbolSequenceMaker.nextSymbol, Color.indianRed);
+                symbolSequenceMaker.incorrectSymbols.Add(currentSprite);
+            }
+
+            symbolSequenceMaker.nextSymbol++;
         }
-        else
-        {
-            Debug.Log("IncorrectSprite");
-        }
-      
-        
+
+       
     }
-   
 }
