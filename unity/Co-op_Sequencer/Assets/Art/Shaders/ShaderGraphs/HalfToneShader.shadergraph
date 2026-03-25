@@ -2183,8 +2183,8 @@
     "m_ObjectId": "409f20ff6b4e4f2d8867efc39abee887",
     "m_Title": "Recude lightness of base color",
     "m_Position": {
-        "x": -1053.599853515625,
-        "y": 992.7998657226563
+        "x": -1053.5999755859375,
+        "y": 992.7999877929688
     }
 }
 
@@ -3456,7 +3456,7 @@
     "m_ObjectId": "9492550d98bd4f76959243852a0d6147",
     "m_Title": "Correct Screen Space Aspect Ratio",
     "m_Position": {
-        "x": -2253.599853515625,
+        "x": -2253.60009765625,
         "y": 1952.7998046875
     }
 }
@@ -3769,8 +3769,8 @@
     "m_ObjectId": "aaec1c0bcc034735a1d64fec1e7cbf77",
     "m_Title": "Remap Value",
     "m_Position": {
-        "x": -1298.3997802734375,
-        "y": 1461.5997314453125
+        "x": -1298.4000244140625,
+        "y": 1461.599853515625
     }
 }
 
@@ -4073,8 +4073,8 @@
     "m_ObjectId": "b80f10c4ba654e9f8a2db1fbde0637d5",
     "m_Title": "Base Color Sample",
     "m_Position": {
-        "x": -1995.999755859375,
-        "y": 874.3999633789063
+        "x": -1996.0,
+        "y": 874.4000244140625
     }
 }
 
@@ -5035,8 +5035,8 @@
     "m_ObjectId": "e4683d5a246841e1a96c9e713c3c8a0b",
     "m_Title": "Generate Half tone Grid",
     "m_Position": {
-        "x": -1451.1998291015625,
-        "y": 2027.1998291015625
+        "x": -1451.199951171875,
+        "y": 2027.2000732421875
     }
 }
 
@@ -5784,8 +5784,8 @@
     "m_ObjectId": "fa2c15b966614f1083e832e9dfa11e8f",
     "m_Title": "Get Diffuse lighting value",
     "m_Position": {
-        "x": -2378.399658203125,
-        "y": 1452.7999267578125
+        "x": -2378.39990234375,
+        "y": 1452.7998046875
     }
 }
 

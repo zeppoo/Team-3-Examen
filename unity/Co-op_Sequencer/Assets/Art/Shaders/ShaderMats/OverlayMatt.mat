@@ -42,7 +42,7 @@ Material:
     - _COLOROVERLAY: 1
     - _QueueControl: 0
     - _QueueOffset: 0
-    - _Strengt: 0.0375
+    - _Strengt: 0.0095
     m_Colors:
     - _Color: {r: 0.49521303, g: 0, b: 1, a: 1}
     - _Derection: {r: 1, g: 0, b: 0, a: 0}
