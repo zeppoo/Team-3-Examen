@@ -4,11 +4,11 @@
 	import { onMount, onDestroy } from 'svelte';
 
 	onMount(() => {
-		screen.orientation.lock('landscape').catch(() => {});
+		(screen.orientation as any).lock?.('landscape').catch(() => {});
 	});
 
 	onDestroy(() => {
-		screen.orientation.unlock();
+		(screen.orientation as any).unlock?.();
 	});
 
 	const pads = [
@@ -27,6 +27,7 @@
 
 	function press(id: string) {
 		pressed[id] = true;
+		navigator.vibrate?.(5);
 		ws.send(id, 'press');
 	}
 
