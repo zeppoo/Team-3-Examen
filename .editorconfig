@@ -1,0 +1,48 @@
+root = true
+
+# =========================
+# C# rules (Unity scripts)
+# =========================
+[*.cs]
+charset = utf-8
+indent_style = space
+indent_size = 4
+insert_final_newline = true
+
+# --- Braces (avoid one-line ifs etc.) ---
+csharp_prefer_braces = true:suggestion
+
+# --- "var" preferences (optional; tweak if you want) ---
+csharp_style_var_for_built_in_types = false:suggestion
+csharp_style_var_when_type_is_apparent = true:suggestion
+csharp_style_var_elsewhere = false:suggestion
+
+# =========================
+# Naming conventions
+# =========================
+
+# 1) Fields should be camelCase (matches your examples: rainAmount, canGo, speed)
+dotnet_naming_rule.fields_should_be_camelcase.severity = warning
+dotnet_naming_rule.fields_should_be_camelcase.symbols = all_fields
+dotnet_naming_rule.fields_should_be_camelcase.style = camel_case_style
+
+dotnet_naming_symbols.all_fields.applicable_kinds = field
+dotnet_naming_symbols.all_fields.applicable_accessibilities = public, internal, private, protected, protected_internal, private_protected
+
+dotnet_naming_style.camel_case_style.capitalization = camel_case
+
+# 2) Methods should be PascalCase (CalculateDamage)
+dotnet_naming_rule.methods_should_be_pascalcase.severity = warning
+dotnet_naming_rule.methods_should_be_pascalcase.symbols = all_methods
+dotnet_naming_rule.methods_should_be_pascalcase.style = pascal_case_style
+
+dotnet_naming_symbols.all_methods.applicable_kinds = method
+
+dotnet_naming_style.pascal_case_style.capitalization = pascal_case
+
+# 3) Properties should be PascalCase (typical C#)
+dotnet_naming_rule.properties_should_be_pascalcase.severity = warning
+dotnet_naming_rule.properties_should_be_pascalcase.symbols = all_properties
+dotnet_naming_rule.properties_should_be_pascalcase.style = pascal_case_style
+
+dotnet_naming_symbols.all_properties.applicable_kinds = property

@@ -1,0 +1,8 @@
+:443 {
+	tls /home/rein-verhaag/Desktop/Team-3-Examen/mobile/test-app/certs/cert.pem /home/rein-verhaag/Desktop/Team-3-Examen/mobile/test-app/certs/key.pem
+
+	reverse_proxy localhost:5173 {
+		header_up Host {host}
+		header_up X-Real-IP {remote_host}
+	}
+}
