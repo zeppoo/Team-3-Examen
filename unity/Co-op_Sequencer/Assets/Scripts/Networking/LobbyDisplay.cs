@@ -29,8 +29,11 @@ public class LobbyDisplay : MonoBehaviour
     [Tooltip("Human-readable lobby name embedded in the QR payload.")]
     public string lobbyName = "game";
 
-    [Tooltip("Port advertised in the QR code. Set to 8443 when running the wss-proxy, or match WebSocketServer.port for direct connections.")]
-    public int advertisedPort = 8443;
+    [Tooltip("Port advertised in the QR code. Set to 443 when using a Cloudflare tunnel, 8443 for wss-proxy, or 0 to use WebSocketServer.port.")]
+    public int advertisedPort = 0;
+
+    [Tooltip("Override the host in the QR code. Leave empty to use local IP. Set to your Cloudflare tunnel hostname (e.g. xxxx.trycloudflare.com) when using a tunnel.")]
+    public string advertisedHost = "";
 
     [Header("QR Visual")]
     [Tooltip("Pixels per QR module (higher = bigger image).")]
@@ -41,6 +44,7 @@ public class LobbyDisplay : MonoBehaviour
     public bool saveQRToDisk = true;
 
     private WebSocketServer _server;
+    private CloudflaredTunnel _tunnel;
 
     void Awake()
     {
@@ -54,6 +58,10 @@ public class LobbyDisplay : MonoBehaviour
             enabled = false;
             return;
         }
+
+        _tunnel = GetComponent<CloudflaredTunnel>();
+        if (_tunnel == null)
+            _tunnel = FindFirstObjectByType<CloudflaredTunnel>();
     }
 
     void Start()
@@ -61,28 +69,50 @@ public class LobbyDisplay : MonoBehaviour
         _server.OnClientConnected    += OnClientConnected;
         _server.OnClientDisconnected += OnClientDisconnected;
 
-        RefreshQRCode();
+        if (_tunnel != null)
+        {
+            // Show a placeholder while the tunnel is starting
+            if (statusText != null)
+                statusText.text = "Starting tunnel...";
+
+            _tunnel.OnTunnelReady += OnTunnelReady;
+        }
+        else
+        {
+            RefreshQRCode();
+        }
     }
 
     void OnDestroy()
     {
-        if (_server == null) return;
-        _server.OnClientConnected    -= OnClientConnected;
-        _server.OnClientDisconnected -= OnClientDisconnected;
+        if (_server != null)
+        {
+            _server.OnClientConnected    -= OnClientConnected;
+            _server.OnClientDisconnected -= OnClientDisconnected;
+        }
+        if (_tunnel != null)
+            _tunnel.OnTunnelReady -= OnTunnelReady;
+    }
+
+    private void OnTunnelReady(string hostname)
+    {
+        advertisedHost = hostname;
+        advertisedPort = 443;
+        RefreshQRCode();
     }
 
     // ── QR generation ────────────────────────────────────────────────────
 
     private void RefreshQRCode()
     {
-        string ip   = _server.LocalIP;
+        string ip   = !string.IsNullOrWhiteSpace(advertisedHost) ? advertisedHost : _server.LocalIP;
         int    port = advertisedPort > 0 ? advertisedPort : _server.port;
 
         // Payload expected by the mobile app
         string payload = BuildPayload(ip, port, lobbyName);
 
         if (ipPortText != null)
-            ipPortText.text = $"ws://{ip}:{port}  |  lobby: {lobbyName}";
+            ipPortText.text = $"{ip}:{port}  |  lobby: {lobbyName}";
 
         if (statusText != null)
             statusText.text = "Waiting for players...";

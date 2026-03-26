@@ -894,6 +894,7 @@ GameObject:
   - component: {fileID: 1552415714}
   - component: {fileID: 1552415713}
   - component: {fileID: 1552415716}
+  - component: {fileID: 1552415717}
   m_Layer: 0
   m_Name: LobbyManager
   m_TagString: Untagged
@@ -932,6 +933,7 @@ MonoBehaviour:
   ipPortText: {fileID: 705674847}
   lobbyName: Test-Lobby
   advertisedPort: 8443
+  advertisedHost: 
   pixelsPerModule: 10
   saveQRToDisk: 1
 --- !u!4 &1552415715
@@ -961,6 +963,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 27eca10912ee382b6aeedad0a343a0bc, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::InputReceiver
+--- !u!114 &1552415717
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1552415712}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7c329c5589d85a85cae57ae32a649641, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CloudflaredTunnel
+  localPort: 8080
+  cloudflaredPath: cloudflared
 --- !u!1 &1626430532
 GameObject:
   m_ObjectHideFlags: 0

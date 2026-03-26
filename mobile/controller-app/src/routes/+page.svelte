@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { ws } from '$lib/websocket.svelte';
+	import type { LobbyInfo } from '$lib/messages';
 
 	let videoEl = $state<HTMLVideoElement | null>(null);
 	let error = $state<string | null>(null);
@@ -111,7 +112,7 @@
 	function handleQR(raw: string) {
 		const cleaned = raw.replace(/[^\x20-\x7E]/g, '');
 
-		let data: { ip: string; port: number | string; lobby: string };
+		let data: LobbyInfo;
 		try {
 			data = JSON.parse(cleaned);
 		} catch (e) {

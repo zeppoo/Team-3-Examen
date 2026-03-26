@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { ws } from '$lib/websocket.svelte';
+	import { padMessage, scratchMessage } from '$lib/messages';
 	import { onMount, onDestroy } from 'svelte';
 
 	onMount(() => {
@@ -25,15 +26,15 @@
 	let rotation = $state(0);
 	let animFrame: number;
 
-	function press(id: string) {
+	function press(id: 'pad1' | 'pad2') {
 		pressed[id] = true;
 		navigator.vibrate?.(5);
-		ws.send(id, 'press');
+		ws.send(padMessage(id, 'press'));
 	}
 
-	function release(id: string) {
+	function release(id: 'pad1' | 'pad2') {
 		pressed[id] = false;
-		ws.send(id, 'release');
+		ws.send(padMessage(id, 'release'));
 	}
 
 	function scratchStart(e: PointerEvent) {
@@ -49,7 +50,7 @@
 		lastY = e.clientY;
 		velocity = dy * 1.5;
 		rotation += velocity;
-		ws.send('scratch', 'press');
+		ws.send(scratchMessage(velocity));
 	}
 
 	function scratchEnd() {
