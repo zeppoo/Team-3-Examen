@@ -7,7 +7,7 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: OverlayMatt
+  m_Name: OverlayMatt 1
   m_Shader: {fileID: -6465566751694194690, guid: 5b84406b3b9bf824881a4e10186ecc9c, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
