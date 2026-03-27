@@ -9,13 +9,10 @@ public class SymbolSequenceMaker : MonoBehaviour
     [SerializeField] public List<Sprite> symbols;
     [SerializeField] private List<Image> imagePos;
     [SerializeField] public List<Sprite> availableSymbols = new List<Sprite>();
-    [SerializeField] private List<GameObject> playerHand = new List<GameObject>();
     [SerializeField] private Slider timerSlider;
     #endregion
 
     #region Private Fields
-    private List<GameObject> players = new List<GameObject>();
-    private PlayerHandGenerator playerHandGenerator;
     private ScoreCounter scoreCounter;
 
     private int roundCounter = 0;
@@ -54,10 +51,7 @@ public class SymbolSequenceMaker : MonoBehaviour
             imagePos.Add(img);
         }
 
-        playerHandGenerator = GetComponent<PlayerHandGenerator>();
-        playerHandGenerator.DealHandToPlayers(symbols);
-
-        playerHand.AddRange(GameObject.FindGameObjectsWithTag("Player"));
+        GenerateSequence();
     }
 
     private void Update()
@@ -136,7 +130,7 @@ public class SymbolSequenceMaker : MonoBehaviour
         incorrectSymbols.Clear();
         correctSymbols.Clear();
 
-        activeImages = Mathf.Min(10, 3 + (roundCounter - 1) / 3 + playerHand.Count);
+        activeImages = Mathf.Min(10, 3 + (roundCounter - 1) / 3);
 
         allowInput = true;
 

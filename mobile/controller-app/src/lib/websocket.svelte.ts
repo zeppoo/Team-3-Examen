@@ -1,15 +1,44 @@
 import { logger } from './logger.svelte';
-import type { ControllerMessage } from './messages';
+import type { ControllerMessage, ServerMessage } from './messages';
 
 type ConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'error';
 
-function createWebSocketStore() {
+interface WebSocketStore {
+	readonly status: ConnectionStatus;
+	readonly lobbyInfo: { ip: string; port: number; lobby: string } | null;
+	readonly lastError: ServerMessage | null;
+	connect(ip: string, port: number, lobby: string): Promise<boolean>;
+	send(msg: ControllerMessage): void;
+	disconnect(): void;
+	bypassForTesting(): void;
+}
+
+function createWebSocketStore(): WebSocketStore {
 	let socket: WebSocket | null = null;
 
 	let status = $state<ConnectionStatus>('disconnected');
 	let lobbyInfo = $state<{ ip: string; port: number; lobby: string } | null>(null);
+	let lastError = $state<ServerMessage | null>(null);
 
-	function connect(ip: string, port: number, lobby: string) {
+	async function waitForTunnel(host: string, maxAttempts = 10, intervalMs = 500): Promise<boolean> {
+		const url = `https://${host}`;
+		for (let i = 1; i <= maxAttempts; i++) {
+			try {
+				await fetch(url, { method: 'HEAD', mode: 'no-cors', signal: AbortSignal.timeout(2000) });
+				logger.net(`Tunnel reachable after ${i} attempt(s)`);
+				return true;
+			} catch {
+				logger.net(`Tunnel not ready yet (attempt ${i}/${maxAttempts}), retrying...`);
+				await new Promise(r => setTimeout(r, intervalMs));
+			}
+		}
+		logger.error(`Tunnel did not become reachable after ${maxAttempts} attempts`);
+		return false;
+	}
+
+	let _connectResolve: ((ok: boolean) => void) | null = null;
+
+	async function connect(ip: string, port: number, lobby: string): Promise<boolean> {
 		if (socket) {
 			logger.net(`Closing existing socket before reconnect`);
 			socket.close();
@@ -17,9 +46,21 @@ function createWebSocketStore() {
 
 		status = 'connecting';
 		lobbyInfo = { ip, port, lobby };
+		const result = new Promise<boolean>(res => { _connectResolve = res; });
+
+		if (ip.includes('trycloudflare.com')) {
+			const reachable = await waitForTunnel(ip);
+			if (!reachable) {
+				status = 'error';
+				_connectResolve?.(false);
+				_connectResolve = null;
+				return result;
+			}
+		}
 
 		const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
-		const url = `${protocol}://${ip}:${port}`;
+		const isDefaultPort = (protocol === 'wss' && port === 443) || (protocol === 'ws' && port === 80);
+		const url = isDefaultPort ? `${protocol}://${ip}` : `${protocol}://${ip}:${port}`;
 
 		logger.net(`Page protocol: ${location.protocol}`);
 		logger.net(`Connecting → ${url}  lobby="${lobby}"`);
@@ -33,7 +74,25 @@ function createWebSocketStore() {
 		socket.onopen = () => {
 			const ms = Math.round(performance.now() - connectStart);
 			logger.net(`Connected ✓ — ${url} (${ms}ms)`);
+			lastError = null;
 			status = 'connected';
+			_connectResolve?.(true);
+			_connectResolve = null;
+		};
+
+		socket.onmessage = (e) => {
+			try {
+				const msg = JSON.parse(e.data) as ServerMessage;
+				logger.net(`Server message: ${e.data}`);
+
+				if (msg.type === 'error') {
+					lastError = msg;
+					logger.error(`Server error: ${msg.reason}`);
+					socket?.close();
+				}
+			} catch {
+				logger.warn(`Unreadable server message: ${e.data}`);
+			}
 		};
 
 		socket.onerror = () => {
@@ -43,9 +102,11 @@ function createWebSocketStore() {
 			logger.error(`  readyState: ${socket?.readyState} (1=OPEN 2=CLOSING 3=CLOSED)`);
 			logger.error(`  Possible causes:`);
 			logger.error(`    • Server not reachable (wrong IP/port?)`);
-			logger.error(`    • Self-signed cert not trusted (open ${protocol === 'wss' ? `https://${ip}:${port}` : 'n/a'} in Chrome first)`);
+			logger.error(`    • Self-signed cert not trusted (open ${protocol === 'wss' ? `https://${ip}${isDefaultPort ? '' : `:${port}`}` : 'n/a'} in Chrome first)`);
 			logger.error(`    • Mixed content blocked (page=https but ws=ws://)`);
 			status = 'error';
+			_connectResolve?.(false);
+			_connectResolve = null;
 		};
 
 		socket.onclose = (e) => {
@@ -62,6 +123,8 @@ function createWebSocketStore() {
 			status = 'disconnected';
 			socket = null;
 		};
+
+		return result;
 	}
 
 	function send(msg: ControllerMessage) {
@@ -75,6 +138,7 @@ function createWebSocketStore() {
 	function disconnect() {
 		socket?.close();
 		lobbyInfo = null;
+		lastError = null;
 	}
 
 	function bypassForTesting() {
@@ -83,13 +147,10 @@ function createWebSocketStore() {
 	}
 
 	return {
-		get status() {
-			return status;
-		},
-		get lobbyInfo() {
-			return lobbyInfo;
-		},
-		connect,
+		get status() { return status; },
+		get lobbyInfo() { return lobbyInfo; },
+		get lastError() { return lastError; },
+		connect: (ip: string, port: number, lobby: string): Promise<boolean> => connect(ip, port, lobby),
 		send,
 		disconnect,
 		bypassForTesting

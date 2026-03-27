@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { ws } from '$lib/websocket.svelte';
-	import { padMessage, scratchMessage } from '$lib/messages';
+	import { buttonMessage, scratchMessage } from '$lib/messages';
 	import { onMount, onDestroy } from 'svelte';
 
 	onMount(() => {
@@ -13,11 +13,12 @@
 	});
 
 	const pads = [
-		{ id: 'pad1', label: '1', color: '#c0392b', glow: '#ff6b6b' },
-		{ id: 'pad2', label: '2', color: '#1a6b9a', glow: '#4fc3f7' }
+		{ id: 'button1', label: '1', color: '#c0392b', glow: '#ff6b6b' },
+		{ id: 'button2', label: '2', color: '#1a6b9a', glow: '#4fc3f7' }
 	] as const;
 
 	let pressed = $state<Record<string, boolean>>({});
+	const padPointers: Record<string, number> = {};
 
 	// Scratchpad state
 	let scratchActive = $state(false);
@@ -26,15 +27,20 @@
 	let rotation = $state(0);
 	let animFrame: number;
 
-	function press(id: 'pad1' | 'pad2') {
+	function press(id: 'button1' | 'button2', e: PointerEvent) {
+		if (id in padPointers) return; // already held by another pointer
+		padPointers[id] = e.pointerId;
+		(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
 		pressed[id] = true;
 		navigator.vibrate?.(5);
-		ws.send(padMessage(id, 'press'));
+		ws.send(buttonMessage(id, 'press'));
 	}
 
-	function release(id: 'pad1' | 'pad2') {
+	function release(id: 'button1' | 'button2', e: PointerEvent) {
+		if (padPointers[id] !== e.pointerId) return; // not the owning pointer
+		delete padPointers[id];
 		pressed[id] = false;
-		ws.send(padMessage(id, 'release'));
+		ws.send(buttonMessage(id, 'release'));
 	}
 
 	function scratchStart(e: PointerEvent) {
@@ -97,9 +103,9 @@
 				class="pad"
 				class:pad-pressed={pressed[pad.id]}
 				style="--color: {pad.color}; --glow: {pad.glow};"
-				onpointerdown={() => press(pad.id)}
-				onpointerup={() => release(pad.id)}
-				onpointerleave={() => release(pad.id)}
+				onpointerdown={(e) => press(pad.id, e)}
+				onpointerup={(e) => release(pad.id, e)}
+				onpointercancel={(e) => release(pad.id, e)}
 			>
 				<span class="pad-label">{pad.label}</span>
 			</button>
@@ -148,6 +154,20 @@
 			</div>
 			</div>
 	</div>
+
+	<!-- Error overlay -->
+	{#if ws.lastError}
+		<div class="error-overlay">
+			<div class="error-box">
+				<span class="error-icon">⚠</span>
+				<p class="error-title">
+					{ws.lastError.reason === 'lobby_full' ? 'Lobby is full' : 'Connection error'}
+				</p>
+				<p class="error-reason">{ws.lastError.reason}</p>
+				<button class="error-back" onclick={disconnect}>Back to scanner</button>
+			</div>
+		</div>
+	{/if}
 
 	<!-- Status bar overlay (top-left) -->
 	<div class="statusbar">
@@ -232,6 +252,7 @@
 		color: rgba(255,255,255,0.25);
 		font-family: monospace;
 		letter-spacing: -1px;
+		pointer-events: none;
 	}
 
 	/* ── Screen ── */
@@ -397,6 +418,60 @@
 		border: none;
 		color: #9ca3af;
 		font-size: 0.7rem;
+		cursor: pointer;
+	}
+
+	/* ── Error overlay ── */
+	.error-overlay {
+		position: absolute;
+		inset: 0;
+		background: rgba(0, 0, 0, 0.85);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		z-index: 100;
+	}
+
+	.error-box {
+		background: #1a0a0a;
+		border: 1px solid #7f1d1d;
+		border-radius: 16px;
+		padding: 32px 40px;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 12px;
+		text-align: center;
+	}
+
+	.error-icon {
+		font-size: 2rem;
+		color: #ef4444;
+	}
+
+	.error-title {
+		margin: 0;
+		font-size: 1.1rem;
+		font-weight: 700;
+		color: #f87171;
+		font-family: monospace;
+	}
+
+	.error-reason {
+		margin: 0;
+		font-size: 0.75rem;
+		color: #6b7280;
+		font-family: monospace;
+	}
+
+	.error-back {
+		margin-top: 8px;
+		padding: 8px 20px;
+		border-radius: 8px;
+		background: #7f1d1d;
+		border: none;
+		color: #fca5a5;
+		font-size: 0.85rem;
 		cursor: pointer;
 	}
 </style>
