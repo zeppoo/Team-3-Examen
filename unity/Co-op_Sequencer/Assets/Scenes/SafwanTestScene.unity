@@ -964,29 +964,19 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::GameManager
   sequenceData:
-    symbols: 00000000010000000200000003000000040000000500000006000000070000000800000009000000
+    roundSymbols: 
     activeSymbolIndex: 0
   symbolSprites:
-  - symbolType: 0
-    sprite: {fileID: 21300000, guid: 4be158787dbbb5d488b044c52cd0edee, type: 3}
-  - symbolType: 1
-    sprite: {fileID: 21300000, guid: 6d9b96ed81c5844409a15fe2b12611f8, type: 3}
-  - symbolType: 2
-    sprite: {fileID: 21300000, guid: 9576a7a46d1286843893164ede1abc30, type: 3}
-  - symbolType: 3
-    sprite: {fileID: 21300000, guid: 294f7b9c394915d4aa0722fc1a40db81, type: 3}
-  - symbolType: 4
-    sprite: {fileID: 21300000, guid: a74d6ead14fd97b4d804e764e09ccd6f, type: 3}
-  - symbolType: 5
-    sprite: {fileID: 21300000, guid: 440254f21fe48b347b88eaf5504f2118, type: 3}
-  - symbolType: 6
-    sprite: {fileID: 21300000, guid: 64f60ff0fe8519c4a915b5f2fcd5610b, type: 3}
-  - symbolType: 7
-    sprite: {fileID: 21300000, guid: a7e5f252629183f4c954e297c3365c5d, type: 3}
-  - symbolType: 8
-    sprite: {fileID: 21300000, guid: e11f7922b4f44b84983808663083eb78, type: 3}
-  - symbolType: 8
-    sprite: {fileID: 21300000, guid: e11f7922b4f44b84983808663083eb78, type: 3}
+  - {fileID: 11400000, guid: 7648c4c2e7aacb94ebba431d23cf4428, type: 2}
+  - {fileID: 11400000, guid: beb091646e979ff42b3fde3ff4337045, type: 2}
+  - {fileID: 11400000, guid: 2fe83c246f7f6a1419b0a1bebcbe7c3e, type: 2}
+  - {fileID: 11400000, guid: 24812d6b7ce99ef429d4792b73f5f214, type: 2}
+  - {fileID: 11400000, guid: a89f2c22b910e7d4da2180e1109d9655, type: 2}
+  - {fileID: 11400000, guid: db60c60b0e78c3c42a0d419e39c4eeef, type: 2}
+  - {fileID: 11400000, guid: dc76df1c587c2b8438886c53d1e24061, type: 2}
+  - {fileID: 11400000, guid: 7720586288dc40b41a373d2d2dcbc049, type: 2}
+  - {fileID: 11400000, guid: e9ac64c68eaa74449914545439fa0c7a, type: 2}
+  - {fileID: 11400000, guid: b42520d6101ecf44b88f02528b3b1532, type: 2}
   scoreData:
     score: 0
     goodPoint: 10

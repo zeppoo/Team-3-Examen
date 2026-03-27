@@ -5,8 +5,6 @@ public class ScoreData
 {
     
     public int score;
-
-    
     public int goodPoint;
     public int failPoints;
 

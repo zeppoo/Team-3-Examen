@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 
 [System.Serializable]
-public class SequenceData
+public class SymbolData
 {
     public enum SymbolType
     {
@@ -18,19 +18,20 @@ public class SequenceData
         Heart
     }
 
-    public List<SymbolType> symbols;
+    public List<SymbolType> roundSymbols;
     public int activeSymbolIndex = 0;
 
     public SymbolType GetActiveSymbol()
     {
-        int clampedIndex = Mathf.Clamp(activeSymbolIndex, 0, symbols.Count - 1);
-        return symbols[clampedIndex];
+        int clampedIndex = Mathf.Clamp(activeSymbolIndex, 0, roundSymbols.Count - 1);
+        return roundSymbols[clampedIndex];
     }
 
     [System.Serializable]
-    public class SymbolSpritePair
+    [CreateAssetMenu(fileName = "SymbolType", menuName = "Scriptable Objects/SymbolType")]
+    public class SymbolSpritePair : ScriptableObject
     {
-        public SequenceData.SymbolType symbolType;
+        public SymbolData.SymbolType symbolType;
         public Sprite sprite;
     }
 }

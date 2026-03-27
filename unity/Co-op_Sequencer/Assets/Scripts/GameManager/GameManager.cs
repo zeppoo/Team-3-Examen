@@ -1,19 +1,21 @@
 using System.Collections.Generic;
 using UnityEngine;
-using static SequenceData;
+using static SymbolData;
 
 public class GameManager : MonoBehaviour
 {
     #region Sequence / Symbol Data
 
     // Logical sequence for the current game/round
-    [SerializeField] private SequenceData sequenceData = new SequenceData();
+    [SerializeField] private SymbolData sequenceData = new SymbolData();
 
     [Header("Symbol → Sprite Mapping")]
     [SerializeField] private List<SymbolSpritePair> symbolSprites;
 
     // Runtime lookup from logical symbol type to actual Sprite
-    private Dictionary<SequenceData.SymbolType, Sprite> spriteLookup;
+    private Dictionary<SymbolData.SymbolType, Sprite> spriteLookup;
+
+    public SymbolData SymbolData => sequenceData;
 
     #endregion
 
@@ -31,8 +33,6 @@ public class GameManager : MonoBehaviour
     // History of all rounds played (each RoundData is data only)
     public List<RoundData> rounds = new List<RoundData>();
 
-    public SequenceData SequenceData => sequenceData;
-
     #endregion
 
     private void Awake()
@@ -49,10 +49,12 @@ public class GameManager : MonoBehaviour
 
     private void InitializeSpriteLookup()
     {
-        spriteLookup = new Dictionary<SequenceData.SymbolType, Sprite>();
+        spriteLookup = new Dictionary<SymbolData.SymbolType, Sprite>();
 
         foreach (var pair in symbolSprites)
         {
+            if (pair == null) continue;
+
             if (!spriteLookup.ContainsKey(pair.symbolType))
             {
                 spriteLookup.Add(pair.symbolType, pair.sprite);
@@ -66,7 +68,7 @@ public class GameManager : MonoBehaviour
         Debug.Log("GameManager active symbol at start: " + activeSymbol);
     }
 
-    public Sprite GetSprite(SequenceData.SymbolType type)
+    public Sprite GetSprite(SymbolData.SymbolType type)
     {
         if (spriteLookup == null)
         {
@@ -85,22 +87,19 @@ public class GameManager : MonoBehaviour
 
     #region Round Methods
 
-    // Example helpers – you can call these from SymbolSequenceMaker / elsewhere
-
+    // Call this when a new round starts
     public void StartNewRound(int roundIndex, float roundSpeed, int activeImages)
     {
         RoundData newRound = new RoundData
         {
-            roundIndex = roundIndex,
-            roundSpeed = roundSpeed,
-            activeImages = activeImages,
-            sequenceData = sequenceData,
-            scoreAfterRound = scoreData.score
+            roundIndex   = roundIndex,
+            roundSpeed   = roundSpeed,
         };
 
         rounds.Add(newRound);
     }
 
+    // Call this when the round ends to store its results
     public void FinishRound(List<bool> clickResults,
                             List<Sprite> correct,
                             List<Sprite> incorrect)
@@ -108,10 +107,6 @@ public class GameManager : MonoBehaviour
         if (rounds.Count == 0) return;
 
         RoundData current = rounds[rounds.Count - 1];
-        current.clickResults = new List<bool>(clickResults);
-        current.correctSymbols = new List<Sprite>(correct);
-        current.incorrectSymbols = new List<Sprite>(incorrect);
-        current.scoreAfterRound = scoreData.score;
     }
 
     #endregion
