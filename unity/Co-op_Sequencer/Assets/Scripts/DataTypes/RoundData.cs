@@ -3,24 +3,26 @@ using UnityEngine;
 
 [System.Serializable]
 
-
+public enum SymbolType
+{
+    Square,
+    Triangle,
+    Circle,
+    Peace,
+    Hexagon,
+    Nepal,
+    Star,
+    Plus,
+    Minus,
+    Heart
+}
 public class RoundData
 {
     public int roundIndex;  
     public float roundSpeed;
-    public enum SymbolType
-    {
-        Square,
-        Triangle,
-        Circle,
-        Peace,
-        Hexagon,
-        Nepal,
-        Star,
-        Plus,
-        Minus,
-        Heart
-    }
+    public List<SymbolType> roundSymbols;
+    public List<RoundData> rounds = new List<RoundData>();
+    public int activeSymbolIndex = 0;
 
     public SymbolType GetActiveSymbol()
     {
@@ -28,10 +30,6 @@ public class RoundData
         return roundSymbols[clampedIndex];
     }
 
-    public List<SymbolType> roundSymbols;
-    public int activeSymbolIndex = 0;
-
-    public List<RoundData> rounds = new List<RoundData>();
 
     public void CreateRound(int index, float speed, int activeImages, SymbolData sequence)
     {

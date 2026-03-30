@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using UnityEngine;
-using static RoundData;
 using static SymbolData;
 
 public class GameManager : MonoBehaviour
@@ -14,7 +13,7 @@ public class GameManager : MonoBehaviour
     [SerializeField] private List<SymbolSpritePair> symbolSprites;
 
     // Runtime lookup from logical symbol type to actual Sprite
-    private Dictionary<RoundData.SymbolType, Sprite> spriteLookup;
+    private Dictionary<SymbolType, Sprite> spriteLookup;
 
     public RoundData SymbolData => sequenceData;
 
@@ -50,7 +49,7 @@ public class GameManager : MonoBehaviour
 
     private void InitializeSpriteLookup()
     {
-        spriteLookup = new Dictionary<RoundData.SymbolType, Sprite>();
+        spriteLookup = new Dictionary<SymbolType, Sprite>();
 
         foreach (var pair in symbolSprites)
         {
@@ -69,7 +68,7 @@ public class GameManager : MonoBehaviour
         Debug.Log("GameManager active symbol at start: " + activeSymbol);
     }
 
-    public Sprite GetSprite(RoundData.SymbolType type)
+    public Sprite GetSprite(SymbolType type)
     {
         if (spriteLookup == null)
         {
