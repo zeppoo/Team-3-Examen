@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using static RoundData;
 using static SymbolData;
 
 public class GameManager : MonoBehaviour
@@ -7,15 +8,15 @@ public class GameManager : MonoBehaviour
     #region Sequence / Symbol Data
 
     // Logical sequence for the current game/round
-    [SerializeField] private SymbolData sequenceData = new SymbolData();
+    [SerializeField] private RoundData sequenceData = new RoundData();
 
     [Header("Symbol → Sprite Mapping")]
     [SerializeField] private List<SymbolSpritePair> symbolSprites;
 
     // Runtime lookup from logical symbol type to actual Sprite
-    private Dictionary<SymbolData.SymbolType, Sprite> spriteLookup;
+    private Dictionary<RoundData.SymbolType, Sprite> spriteLookup;
 
-    public SymbolData SymbolData => sequenceData;
+    public RoundData SymbolData => sequenceData;
 
     #endregion
 
@@ -49,7 +50,7 @@ public class GameManager : MonoBehaviour
 
     private void InitializeSpriteLookup()
     {
-        spriteLookup = new Dictionary<SymbolData.SymbolType, Sprite>();
+        spriteLookup = new Dictionary<RoundData.SymbolType, Sprite>();
 
         foreach (var pair in symbolSprites)
         {
@@ -68,7 +69,7 @@ public class GameManager : MonoBehaviour
         Debug.Log("GameManager active symbol at start: " + activeSymbol);
     }
 
-    public Sprite GetSprite(SymbolData.SymbolType type)
+    public Sprite GetSprite(RoundData.SymbolType type)
     {
         if (spriteLookup == null)
         {
