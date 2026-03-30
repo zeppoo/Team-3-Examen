@@ -14,8 +14,6 @@ public class PlayerHandGenerator : MonoBehaviour
     void Awake()
     {
         FindPlayers();
-        Debug.Log("Awake - players found: " + playerHand.Count);
-        Debug.Log("Awake - playerHandSymbols slots: " + playerHandSymbols.Count);
     }
 
     private void FindPlayers()
