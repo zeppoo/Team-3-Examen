@@ -9,7 +9,7 @@ public class SymbolData
     [CreateAssetMenu(fileName = "SymbolType", menuName = "Scriptable Objects/SymbolType")]
     public class SymbolSpritePair : ScriptableObject
     {
-        public RoundData.SymbolType symbolType;
+        public SymbolType symbolType;
         public Sprite sprite;
     }
 }
