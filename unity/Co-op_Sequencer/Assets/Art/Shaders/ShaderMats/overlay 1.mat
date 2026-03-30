@@ -7,7 +7,7 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: OverlayMatt
+  m_Name: overlay 1
   m_Shader: {fileID: -6465566751694194690, guid: 5b84406b3b9bf824881a4e10186ecc9c, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
@@ -17,7 +17,7 @@ Material:
   m_LightmapFlags: 4
   m_EnableInstancingVariants: 0
   m_DoubleSidedGI: 0
-  m_CustomRenderQueue: -1
+  m_CustomRenderQueue: 3000
   stringTagMap: {}
   disabledShaderPasses:
   - MOTIONVECTORS
@@ -42,13 +42,13 @@ Material:
     - _COLOROVERLAY: 1
     - _QueueControl: 0
     - _QueueOffset: 0
-    - _Strengt: 0.0095
+    - _Strengt: 0.0246
     m_Colors:
-    - _Color: {r: 0.49521303, g: 0, b: 1, a: 1}
+    - _Color: {r: 1, g: 0, b: 0, a: 1}
     - _Derection: {r: 1, g: 0, b: 0, a: 0}
   m_BuildTextureStacks: []
   m_AllowLocking: 1
---- !u!114 &7353252298106481581
+--- !u!114 &597872259702583337
 MonoBehaviour:
   m_ObjectHideFlags: 11
   m_CorrespondingSourceObject: {fileID: 0}

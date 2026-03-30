@@ -4073,7 +4073,7 @@
     "m_ObjectId": "b80f10c4ba654e9f8a2db1fbde0637d5",
     "m_Title": "Base Color Sample",
     "m_Position": {
-        "x": -1996.0,
+        "x": -1995.9998779296875,
         "y": 874.4000244140625
     }
 }
@@ -5035,7 +5035,7 @@
     "m_ObjectId": "e4683d5a246841e1a96c9e713c3c8a0b",
     "m_Title": "Generate Half tone Grid",
     "m_Position": {
-        "x": -1451.199951171875,
+        "x": -1451.2001953125,
         "y": 2027.2000732421875
     }
 }
@@ -5784,8 +5784,8 @@
     "m_ObjectId": "fa2c15b966614f1083e832e9dfa11e8f",
     "m_Title": "Get Diffuse lighting value",
     "m_Position": {
-        "x": -2378.39990234375,
-        "y": 1452.7998046875
+        "x": -2378.400146484375,
+        "y": 1452.7999267578125
     }
 }
 

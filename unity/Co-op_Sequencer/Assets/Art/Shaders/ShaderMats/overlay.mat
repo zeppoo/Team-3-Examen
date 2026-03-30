@@ -7,16 +7,17 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: OutlineMat
-  m_Shader: {fileID: -6465566751694194690, guid: 288e621d0b89dd34a875b4f5e6609725, type: 3}
+  m_Name: overlay
+  m_Shader: {fileID: -6465566751694194690, guid: 5b84406b3b9bf824881a4e10186ecc9c, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
-  m_ValidKeywords: []
+  m_ValidKeywords:
+  - _COLOROVERLAY
   m_InvalidKeywords: []
   m_LightmapFlags: 4
   m_EnableInstancingVariants: 0
   m_DoubleSidedGI: 0
-  m_CustomRenderQueue: 3050
+  m_CustomRenderQueue: -1
   stringTagMap: {}
   disabledShaderPasses:
   - MOTIONVECTORS
@@ -38,14 +39,16 @@ Material:
         m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
+    - _COLOROVERLAY: 1
     - _QueueControl: 0
-    - _QueueOffset: 50
-    - _Scale: 1.03
+    - _QueueOffset: 0
+    - _Strengt: 0.0246
     m_Colors:
-    - _Color: {r: 0, g: 0, b: 0, a: 1}
+    - _Color: {r: 1, g: 0.9215686, b: 0.01568628, a: 1}
+    - _Derection: {r: 1, g: 0, b: 0, a: 0}
   m_BuildTextureStacks: []
   m_AllowLocking: 1
---- !u!114 &992668643027803852
+--- !u!114 &597872259702583337
 MonoBehaviour:
   m_ObjectHideFlags: 11
   m_CorrespondingSourceObject: {fileID: 0}
