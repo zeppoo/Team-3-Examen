@@ -11,7 +11,7 @@ public class PlayerHandReceiver : MonoBehaviour
             return;
         }
 
-        Debug.Log("Incoming JSON: " + json);
+
 
         PlayerHandsJson data = JsonUtility.FromJson<PlayerHandsJson>(json);
 
@@ -21,12 +21,12 @@ public class PlayerHandReceiver : MonoBehaviour
             return;
         }
 
-        Debug.Log("Received JSON!");
+   
 
         for (int i = 0; i < data.playerHandss.Count; i++)
         {
             List<string> hand = data.playerHandss[i].cards;
-            Debug.Log($"Player {i} hand: {string.Join(", ", hand)}");
+ 
         }
     }
 }

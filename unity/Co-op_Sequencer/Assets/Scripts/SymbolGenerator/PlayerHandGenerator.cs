@@ -106,7 +106,7 @@ public class PlayerHandGenerator : MonoBehaviour
         PlayerHandsJson wrapper = new PlayerHandsJson { playerHandss = dealtHandsForExport };
         lastDealtHandsJson = JsonUtility.ToJson(wrapper);
 
-        Debug.Log("Dealt hands JSON: " + lastDealtHandsJson);
+        
 
         // ✅ SEND IMMEDIATELY
         if (receiver != null)
@@ -115,7 +115,7 @@ public class PlayerHandGenerator : MonoBehaviour
         }
         else
         {
-            Debug.LogWarning("No receiver assigned!");
+  
         }
     }
 }

@@ -7,10 +7,12 @@ using UnityEngine.EventSystems;
 public class SequenceInput : MonoBehaviour, IPointerClickHandler
 {
     private SymbolSequenceMaker symbolSequenceMaker;
+    private PlayerInputFeedback playerInputFeedback;
 
     void Start()
     {
         symbolSequenceMaker = GameObject.Find("SymbolSequenceMaker").GetComponent<SymbolSequenceMaker>();
+        playerInputFeedback = GetComponentInParent<PlayerInputFeedback>();
     }
 
 
@@ -31,15 +33,27 @@ public class SequenceInput : MonoBehaviour, IPointerClickHandler
             {
                 symbolSequenceMaker.MarkSymbolAsFound(symbolSequenceMaker.nextSymbol, Color.darkGray);
                 symbolSequenceMaker.correctSymbols.Add(currentSprite);
+
+                Image targetImage = symbolSequenceMaker.imagePos[symbolSequenceMaker.nextSymbol];
+                StartCoroutine(playerInputFeedback.Bounce(targetImage));
+
+                Debug.Log("Correct! Clicked");
             }
             else
             {
                 symbolSequenceMaker.MarkSymbolAsFound(symbolSequenceMaker.nextSymbol, Color.indianRed);
                 symbolSequenceMaker.incorrectSymbols.Add(currentSprite);
+
+                Image targetImage = symbolSequenceMaker.imagePos[symbolSequenceMaker.nextSymbol];
+                StartCoroutine(playerInputFeedback.Shake(targetImage));
+
+                Debug.Log("Incorrect! Clicked");
             }
 
             symbolSequenceMaker.nextSymbol++;
+            symbolSequenceMaker.HighlightNextSymbol();
         }
+
 
        
     }

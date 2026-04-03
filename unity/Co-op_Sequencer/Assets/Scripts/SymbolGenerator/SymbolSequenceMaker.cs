@@ -7,7 +7,7 @@ public class SymbolSequenceMaker : MonoBehaviour
 {
     #region Serialized Fields
     [SerializeField] public List<Sprite> symbols;
-    [SerializeField] private List<Image> imagePos;
+    [SerializeField] public List<Image> imagePos;
     [SerializeField] public List<Sprite> availableSymbols = new List<Sprite>();
     [SerializeField] private List<GameObject> playerHand = new List<GameObject>();
     [SerializeField] private Slider timerSlider;
@@ -127,6 +127,7 @@ public class SymbolSequenceMaker : MonoBehaviour
 
         currentSequenceJson = JsonUtility.ToJson(new SequenceJsonWrapper { sequence = sequenceNames });
         Debug.Log("Current sequence JSON: " + currentSequenceJson);
+        
     }
 
     private void RoundCounter()
@@ -202,4 +203,23 @@ public class SymbolSequenceMaker : MonoBehaviour
         public List<string> sequence;
     }
     #endregion
+
+
+    public void HighlightNextSymbol()
+    {
+        for (int i = 0; i < imagePos.Count; i++)
+        {
+            RectTransform rect = imagePos[i].rectTransform;
+
+            if (i == nextSymbol)
+            {
+                rect.sizeDelta = new Vector2(120, 120);
+            }
+            else
+            {
+                rect.sizeDelta = new Vector2(100, 100);
+            }
+        }
+    }
+
 }

@@ -963,9 +963,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 02c4833a13b5f254184b72234c866266, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::GameManager
-  sequenceData:
-    roundSymbols: 
-    activeSymbolIndex: 0
   symbolSprites:
   - {fileID: 11400000, guid: 7648c4c2e7aacb94ebba431d23cf4428, type: 2}
   - {fileID: 11400000, guid: beb091646e979ff42b3fde3ff4337045, type: 2}
@@ -981,7 +978,6 @@ MonoBehaviour:
     score: 0
     goodPoint: 10
     failPoints: 20
-  rounds: []
 --- !u!1 &1394546767
 GameObject:
   m_ObjectHideFlags: 0
@@ -1093,6 +1089,23 @@ RectTransform:
   m_CorrespondingSourceObject: {fileID: 6127302354315256352, guid: 6f516ed7fb4a9e64d903b4f742cd768f, type: 3}
   m_PrefabInstance: {fileID: 776086581}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &2064275633 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 5547510736333618126, guid: 6f516ed7fb4a9e64d903b4f742cd768f, type: 3}
+  m_PrefabInstance: {fileID: 3738410227911445530}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &2064275636
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2064275633}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9422fb3ef1c3f3349a85559b9100d445, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerInputFeedback
 --- !u!1001 &1390345825898359518
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -1434,7 +1447,10 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 5547510736333618126, guid: 6f516ed7fb4a9e64d903b4f742cd768f, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 2064275636}
   m_SourcePrefab: {fileID: 100100000, guid: 6f516ed7fb4a9e64d903b4f742cd768f, type: 3}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
