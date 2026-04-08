@@ -1,76 +1,69 @@
 using UnityEngine;
 
-public class RandomMoveLight : MonoBehaviour
+public class BPMStageLight : MonoBehaviour
 {
-    [Header("Y Sweep Limits")]
+    [Header("BPM Settings")]
+    public float bpm = 120f;
+
+    [Header("Y Rotation Limits")]
     public float yMinAngle = -60f;
     public float yMaxAngle = 60f;
-    public float yMinSpeed = 20f;
-    public float yMaxSpeed = 60f;
 
     [Header("X Tilt Limits")]
     public float xMinAngle = -20f;
     public float xMaxAngle = 20f;
-    public float xSpeed = 2f;
 
-    [Header("Timing")]
-    public float changeInterval = 2f;
-
-    private float ySpeed;
-    private float currentY;
-    private float currentX;
-    private float targetX;
-
+    private float beatInterval;
     private float timer;
+    private int beatCount = 0;
 
     void Start()
     {
-        // Start roughly centered
-        currentY = 0f;
-        currentX = 0f;
-
-        PickNewValues();
+        beatInterval = 60f / bpm;
+        TriggerBeat(); // initial position
     }
 
     void Update()
     {
-        // --- Y ROTATION (continuous sweep with limits) ---
-        currentY += ySpeed * Time.deltaTime;
-
-        // Clamp and bounce back if limits reached
-        if (currentY > yMaxAngle)
-        {
-            currentY = yMaxAngle;
-            ySpeed *= -1f;
-        }
-        else if (currentY < yMinAngle)
-        {
-            currentY = yMinAngle;
-            ySpeed *= -1f;
-        }
-
-        // --- X TILT (smooth random target) ---
-        currentX = Mathf.Lerp(currentX, targetX, Time.deltaTime * xSpeed);
-
-        // Apply rotation
-        transform.localRotation = Quaternion.Euler(currentX, currentY, 0f);
-
-        // --- RANDOM CHANGES OVER TIME ---
         timer += Time.deltaTime;
-        if (timer >= changeInterval)
+
+        if (timer >= beatInterval)
         {
-            PickNewValues();
-            timer = 0f;
+            timer -= beatInterval;
+            beatCount = (beatCount + 1) % 4; // 4/4 loop
+            TriggerBeat();
         }
     }
 
-    void PickNewValues()
+    void TriggerBeat()
     {
-        // Random Y speed + direction
-        float speed = Random.Range(yMinSpeed, yMaxSpeed);
-        ySpeed = speed * (Random.value > 0.5f ? 1f : -1f);
+        float newY = 0f;
+        float newX = 0f;
 
-        // Random X tilt target
-        targetX = Random.Range(xMinAngle, xMaxAngle);
+        switch (beatCount)
+        {
+            case 0: // Beat 1 (strong hit)
+                newY = Random.Range(yMinAngle, yMaxAngle);
+                newX = Random.Range(xMinAngle, xMaxAngle);
+                break;
+
+            case 1: // Beat 2
+                newX = Random.Range(xMinAngle, xMaxAngle);
+                newY = transform.localEulerAngles.y; // keep Y
+                break;
+
+            case 2: // Beat 3
+                newY = Random.Range(yMinAngle, yMaxAngle);
+                newX = transform.localEulerAngles.x; // keep X
+                break;
+
+            case 3: // Beat 4
+                newX = Random.Range(xMinAngle, xMaxAngle);
+                newY = transform.localEulerAngles.y;
+                break;
+        }
+
+        // Apply instantly (no smoothing, no in-between motion)
+        transform.localRotation = Quaternion.Euler(newX, newY, 0f);
     }
 }
