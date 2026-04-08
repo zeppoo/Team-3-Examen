@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { ws } from '$lib/websocket.svelte';
-	import { padMessage, scratchMessage } from '$lib/messages';
+	import { buttonMessage, scratchMessage } from '$lib/messages';
 	import { onMount, onDestroy } from 'svelte';
 
 	onMount(() => {
@@ -12,12 +12,25 @@
 		(screen.orientation as any).unlock?.();
 	});
 
+	// Derive a slightly lighter version of the player color for the glow effect.
+	function withAlpha(hex: string, lighten = 40): string {
+		const n = parseInt(hex.replace('#', ''), 16);
+		const r = Math.min(255, (n >> 16) + lighten);
+		const g = Math.min(255, ((n >> 8) & 0xff) + lighten);
+		const b = Math.min(255, (n & 0xff) + lighten);
+		return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+	}
+
+	const padColor = $derived(ws.playerColor ?? '#444455');
+	const padGlow  = $derived(withAlpha(padColor));
+
 	const pads = [
-		{ id: 'pad1', label: '1', color: '#c0392b', glow: '#ff6b6b' },
-		{ id: 'pad2', label: '2', color: '#1a6b9a', glow: '#4fc3f7' }
+		{ id: 'button1', label: '1' },
+		{ id: 'button2', label: '2' }
 	] as const;
 
 	let pressed = $state<Record<string, boolean>>({});
+	const padPointers: Record<string, number> = {};
 
 	// Scratchpad state
 	let scratchActive = $state(false);
@@ -26,15 +39,20 @@
 	let rotation = $state(0);
 	let animFrame: number;
 
-	function press(id: 'pad1' | 'pad2') {
+	function press(id: 'button1' | 'button2', e: PointerEvent) {
+		if (id in padPointers) return; // already held by another pointer
+		padPointers[id] = e.pointerId;
+		(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
 		pressed[id] = true;
 		navigator.vibrate?.(5);
-		ws.send(padMessage(id, 'press'));
+		ws.send(buttonMessage(id, 'press'));
 	}
 
-	function release(id: 'pad1' | 'pad2') {
+	function release(id: 'button1' | 'button2', e: PointerEvent) {
+		if (padPointers[id] !== e.pointerId) return; // not the owning pointer
+		delete padPointers[id];
 		pressed[id] = false;
-		ws.send(padMessage(id, 'release'));
+		ws.send(buttonMessage(id, 'release'));
 	}
 
 	function scratchStart(e: PointerEvent) {
@@ -51,6 +69,9 @@
 		velocity = dy * 1.5;
 		rotation += velocity;
 		ws.send(scratchMessage(velocity));
+
+		const intensity = Math.min(Math.round(Math.abs(velocity) * 6), 80);
+		if (intensity > 2) navigator.vibrate?.(intensity);
 	}
 
 	function scratchEnd() {
@@ -93,22 +114,27 @@
 	<!-- Left: 2 drum pads stacked -->
 	<div class="pads">
 		{#each pads as pad}
+			{@const img = pad.id === 'button1' ? ws.button1Image : ws.button2Image}
 			<button
 				class="pad"
 				class:pad-pressed={pressed[pad.id]}
-				style="--color: {pad.color}; --glow: {pad.glow};"
-				onpointerdown={() => press(pad.id)}
-				onpointerup={() => release(pad.id)}
-				onpointerleave={() => release(pad.id)}
+				style="--color: {padColor}; --glow: {padGlow};"
+				onpointerdown={(e) => press(pad.id, e)}
+				onpointerup={(e) => release(pad.id, e)}
+				onpointercancel={(e) => release(pad.id, e)}
 			>
-				<span class="pad-label">{pad.label}</span>
+				{#if img}
+					<img class="pad-symbol" src={img} alt={pad.label} />
+				{:else}
+					<span class="pad-label">{pad.label}</span>
+				{/if}
 			</button>
 		{/each}
 	</div>
 
 	<!-- Middle: digital screen -->
 	<div class="screen">
-		<div class="screen-inner">
+		<div class="screen-inner" style="--sc: {padColor}; --sc-glow: {padGlow};">
 			<div class="screen-row">
 				<span class="screen-label">PLAYER</span>
 				<span class="screen-value">01</span>
@@ -148,6 +174,20 @@
 			</div>
 			</div>
 	</div>
+
+	<!-- Error overlay -->
+	{#if ws.lastError}
+		<div class="error-overlay">
+			<div class="error-box">
+				<span class="error-icon">⚠</span>
+				<p class="error-title">
+					{ws.lastError.reason === 'lobby_full' ? 'Lobby is full' : 'Connection error'}
+				</p>
+				<p class="error-reason">{ws.lastError.reason}</p>
+				<button class="error-back" onclick={disconnect}>Back to scanner</button>
+			</div>
+		</div>
+	{/if}
 
 	<!-- Status bar overlay (top-left) -->
 	<div class="statusbar">
@@ -223,6 +263,15 @@
 			0 2px 6px rgba(0,0,0,0.4);
 	}
 
+	.pad-symbol {
+		width: 55%;
+		height: 55%;
+		object-fit: contain;
+		pointer-events: none;
+		opacity: 0.9;
+		filter: drop-shadow(0 0 6px var(--glow));
+	}
+
 	.pad-label {
 		position: absolute;
 		bottom: 12px;
@@ -232,10 +281,12 @@
 		color: rgba(255,255,255,0.25);
 		font-family: monospace;
 		letter-spacing: -1px;
+		pointer-events: none;
 	}
 
 	/* ── Screen ── */
 	.screen {
+		flex: 1;
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -244,7 +295,7 @@
 
 	.screen-inner {
 		background: #020c04;
-		border: 2px solid #1a3d1a;
+		border: 2px solid color-mix(in srgb, var(--sc) 40%, black 60%);
 		border-radius: 12px;
 		padding: 16px 20px;
 		display: flex;
@@ -252,7 +303,7 @@
 		gap: 10px;
 		min-width: 110px;
 		box-shadow:
-			0 0 12px rgba(0, 255, 80, 0.15),
+			0 0 12px color-mix(in srgb, var(--sc) 15%, transparent),
 			inset 0 0 20px rgba(0, 0, 0, 0.8);
 		/* Scanline overlay */
 		background-image: repeating-linear-gradient(
@@ -275,7 +326,7 @@
 		font-family: monospace;
 		font-size: 0.5rem;
 		letter-spacing: 0.2em;
-		color: rgba(0, 255, 80, 0.4);
+		color: color-mix(in srgb, var(--sc) 50%, transparent);
 		text-transform: uppercase;
 	}
 
@@ -283,14 +334,14 @@
 		font-family: monospace;
 		font-size: 1.8rem;
 		font-weight: 700;
-		color: #00ff50;
-		text-shadow: 0 0 10px rgba(0, 255, 80, 0.8);
+		color: var(--sc-glow);
+		text-shadow: 0 0 10px color-mix(in srgb, var(--sc) 80%, transparent);
 		letter-spacing: 0.1em;
 	}
 
 	.screen-divider {
 		height: 1px;
-		background: rgba(0, 255, 80, 0.15);
+		background: color-mix(in srgb, var(--sc) 15%, transparent);
 		margin: 0 4px;
 	}
 
@@ -397,6 +448,60 @@
 		border: none;
 		color: #9ca3af;
 		font-size: 0.7rem;
+		cursor: pointer;
+	}
+
+	/* ── Error overlay ── */
+	.error-overlay {
+		position: absolute;
+		inset: 0;
+		background: rgba(0, 0, 0, 0.85);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		z-index: 100;
+	}
+
+	.error-box {
+		background: #1a0a0a;
+		border: 1px solid #7f1d1d;
+		border-radius: 16px;
+		padding: 32px 40px;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 12px;
+		text-align: center;
+	}
+
+	.error-icon {
+		font-size: 2rem;
+		color: #ef4444;
+	}
+
+	.error-title {
+		margin: 0;
+		font-size: 1.1rem;
+		font-weight: 700;
+		color: #f87171;
+		font-family: monospace;
+	}
+
+	.error-reason {
+		margin: 0;
+		font-size: 0.75rem;
+		color: #6b7280;
+		font-family: monospace;
+	}
+
+	.error-back {
+		margin-top: 8px;
+		padding: 8px 20px;
+		border-radius: 8px;
+		background: #7f1d1d;
+		border: none;
+		color: #fca5a5;
+		font-size: 0.85rem;
 		cursor: pointer;
 	}
 </style>

@@ -12,13 +12,15 @@ export interface LobbyInfo {
 
 
 // Sent when a drum pad is pressed or released.
-export interface PadMessage {
-	type: 'pad';
-	id: 'pad1' | 'pad2';
+// {"type":"button","button":"button1","state":"press"}
+export interface ButtonMessage {
+	type: 'button';
+	button: 'button1' | 'button2';
 	state: 'press' | 'release';
 }
 
 // Sent continuously while the scratch disc is being dragged.
+// {"type":"scratch","velocity":4.5}
 export interface ScratchMessage {
 	type: 'scratch';
 	// Pixels per frame the disc moved; negative = backward, positive = forward.
@@ -26,12 +28,35 @@ export interface ScratchMessage {
 }
 
 // Union of all messages the controller can send.
-export type ControllerMessage = PadMessage | ScratchMessage;
+export type ControllerMessage = ButtonMessage | ScratchMessage;
+
+// ─── Server → client messages ─────────────────────────────────────────────────
+
+// Sent by the server when something goes wrong (e.g. lobby full).
+export interface ErrorMessage {
+	type: 'error';
+	reason: 'lobby_full' | string;
+}
+
+// Sent by Unity immediately after a player joins, assigning their id and color.
+// Sent again when symbols are assigned with button image data.
+// {"type":"player_assigned","playerId":0,"color":"#fe0000","button1Symbol":"Square","button1Image":"<base64>","button2Symbol":"Heart","button2Image":"<base64>"}
+export interface PlayerAssignedMessage {
+	type: 'player_assigned';
+	playerId: number;
+	color: string;          // hex, e.g. "#fe0000"
+	button1Symbol?: string; // unique instrument
+	button1Image?: string;  // base64 PNG
+	button2Symbol?: string; // unique instrument
+	button2Image?: string;
+}
+
+export type ServerMessage = ErrorMessage | PlayerAssignedMessage;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-export function padMessage(id: PadMessage['id'], state: PadMessage['state']): PadMessage {
-	return { type: 'pad', id, state };
+export function buttonMessage(button: ButtonMessage['button'], state: ButtonMessage['state']): ButtonMessage {
+	return { type: 'button', button, state };
 }
 
 export function scratchMessage(velocity: number): ScratchMessage {
