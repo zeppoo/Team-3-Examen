@@ -45,4 +45,18 @@ namespace CoopSequencer.Networking
         public string player;  // clientId of the player who scratched
         public float  velocity;
     }
+
+    // Sent from Unity to the phone immediately after it joins, and again when symbols are assigned.
+    // {"type":"player_assigned","playerId":0,"color":"#E74C3C","button1Symbol":"Square","button1Image":"<base64>","button2Symbol":"Heart","button2Image":"<base64>"}
+    [Serializable]
+    public class PlayerAssignedMessage
+    {
+        public string type           = "player_assigned";
+        public int    playerId;
+        public string color;          // hex, e.g. "#E74C3C"
+        public string button1Symbol;  // unique instrument
+        public string button1Image;
+        public string button2Symbol;  // unique instrument
+        public string button2Image;
+    }
 }

@@ -7,6 +7,9 @@ interface WebSocketStore {
 	readonly status: ConnectionStatus;
 	readonly lobbyInfo: { ip: string; port: number; lobby: string } | null;
 	readonly lastError: ServerMessage | null;
+	readonly playerColor: string | null;
+	readonly button1Image: string | null;
+	readonly button2Image: string | null;
 	connect(ip: string, port: number, lobby: string): Promise<boolean>;
 	send(msg: ControllerMessage): void;
 	disconnect(): void;
@@ -19,6 +22,9 @@ function createWebSocketStore(): WebSocketStore {
 	let status = $state<ConnectionStatus>('disconnected');
 	let lobbyInfo = $state<{ ip: string; port: number; lobby: string } | null>(null);
 	let lastError = $state<ServerMessage | null>(null);
+	let playerColor = $state<string | null>(null);
+	let button1Image = $state<string | null>(null);
+	let button2Image = $state<string | null>(null);
 
 	async function waitForTunnel(host: string, maxAttempts = 10, intervalMs = 500): Promise<boolean> {
 		const url = `https://${host}`;
@@ -89,6 +95,11 @@ function createWebSocketStore(): WebSocketStore {
 					lastError = msg;
 					logger.error(`Server error: ${msg.reason}`);
 					socket?.close();
+				} else if (msg.type === 'player_assigned') {
+					playerColor = msg.color;
+					if (msg.button1Image) button1Image = `data:image/png;base64,${msg.button1Image}`;
+					if (msg.button2Image) button2Image = `data:image/png;base64,${msg.button2Image}`;
+					logger.net(`Player assigned color: ${msg.color}`);
 				}
 			} catch {
 				logger.warn(`Unreadable server message: ${e.data}`);
@@ -139,6 +150,9 @@ function createWebSocketStore(): WebSocketStore {
 		socket?.close();
 		lobbyInfo = null;
 		lastError = null;
+		playerColor = null;
+		button1Image = null;
+		button2Image = null;
 	}
 
 	function bypassForTesting() {
@@ -150,6 +164,9 @@ function createWebSocketStore(): WebSocketStore {
 		get status() { return status; },
 		get lobbyInfo() { return lobbyInfo; },
 		get lastError() { return lastError; },
+		get playerColor() { return playerColor; },
+		get button1Image() { return button1Image; },
+		get button2Image() { return button2Image; },
 		connect: (ip: string, port: number, lobby: string): Promise<boolean> => connect(ip, port, lobby),
 		send,
 		disconnect,

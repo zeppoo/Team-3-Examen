@@ -54,43 +54,46 @@ public class CloudflaredTunnel : MonoBehaviour
     void Start()
     {
         _cts = new CancellationTokenSource();
-        Task.Run(() => TunnelLoop(_cts.Token));
+        Task.Run(() => StartTunnelOnce(_cts.Token));
     }
 
     void OnDestroy() => KillTunnel();
     void OnApplicationQuit() => KillTunnel();
 
+    /// <summary>Kills the current tunnel and starts a fresh one.</summary>
+    public void RestartTunnel()
+    {
+        KillTunnel();
+        _cts = new CancellationTokenSource();
+        Task.Run(() => StartTunnelOnce(_cts.Token));
+    }
+
     private bool IsNamedTunnel => !string.IsNullOrWhiteSpace(tunnelId);
 
-    // ── Main loop ─────────────────────────────────────────────────────────
+    // ── Main logic ────────────────────────────────────────────────────────
 
-    private async Task TunnelLoop(CancellationToken ct)
+    private async Task StartTunnelOnce(CancellationToken ct)
     {
-        while (!ct.IsCancellationRequested)
+        string currentHost = StartProcess(ct);
+        if (currentHost == null)
         {
-            string currentHost = StartProcess(ct);
-            if (currentHost == null)
-            {
-                // Process failed to start — wait before retrying
-                await Task.Delay(5000, ct).ContinueWith(_ => { });
-                continue;
-            }
+            // StartProcess already logs the specific error (rate limit, etc.)
+            return;
+        }
 
-            MainThreadDispatcher.Enqueue(() => OnTunnelReady?.Invoke(currentHost));
+        MainThreadDispatcher.Enqueue(() => OnTunnelReady?.Invoke(currentHost));
 
-            if (pollIntervalSeconds <= 0 || IsNamedTunnel)
-            {
-                // No polling — just drain stderr until cancelled
-                DrainStderr(_process, ct);
-                break;
-            }
+        if (pollIntervalSeconds <= 0 || IsNamedTunnel)
+        {
+            DrainStderr(_process, ct);
+            return;
+        }
 
-            // Poll until the tunnel dies or we detect failure
-            await PollUntilDead(currentHost, ct);
+        await PollUntilDead(currentHost, ct);
 
-            if (ct.IsCancellationRequested) break;
-
-            UnityEngine.Debug.LogWarning("[CloudflaredTunnel] Tunnel unreachable — restarting...");
+        if (!ct.IsCancellationRequested)
+        {
+            UnityEngine.Debug.LogWarning("[CloudflaredTunnel] Tunnel unreachable. Use the restart button to try again.");
             KillProcess();
         }
     }
@@ -179,6 +182,7 @@ public class CloudflaredTunnel : MonoBehaviour
     {
         var urlRegex   = new Regex(@"https://([a-z0-9\-]+\.trycloudflare\.com)", RegexOptions.IgnoreCase);
         var readyRegex = new Regex(@"Registered tunnel connection", RegexOptions.IgnoreCase);
+        var rateLimitRegex = new Regex(@"429 Too Many Requests|status_code=""429", RegexOptions.IgnoreCase);
 
         string pendingHost = null;
 
@@ -191,6 +195,14 @@ public class CloudflaredTunnel : MonoBehaviour
 
             UnityEngine.Debug.Log($"[cloudflared] {line}");
 
+            // Detect Cloudflare rate limiting (429 = exceeded 200 concurrent in-flight requests)
+            if (rateLimitRegex.IsMatch(line))
+            {
+                UnityEngine.Debug.LogError("[CloudflaredTunnel] Rate limited by Cloudflare (429). Quick tunnels support max 200 concurrent in-flight requests. Use the restart button to try again.");
+                KillProcess();
+                return null;
+            }
+
             if (pendingHost == null)
             {
                 var match = urlRegex.Match(line);
@@ -201,7 +213,6 @@ public class CloudflaredTunnel : MonoBehaviour
             if (pendingHost != null && readyRegex.IsMatch(line))
             {
                 UnityEngine.Debug.Log($"[CloudflaredTunnel] Tunnel ready: {pendingHost}");
-                // Keep draining stderr on a background thread so the process isn't blocked
                 var reader2 = reader;
                 var ct2     = ct;
                 Task.Run(() => DrainStderr(_process, ct2));
@@ -238,7 +249,6 @@ public class CloudflaredTunnel : MonoBehaviour
                 if (failures >= failuresBeforeRestart) return;
             }
 
-            // Also stop polling if the process has already exited
             if (_process == null || _process.HasExited)
             {
                 UnityEngine.Debug.LogWarning("[CloudflaredTunnel] Process exited unexpectedly.");
@@ -255,7 +265,6 @@ public class CloudflaredTunnel : MonoBehaviour
                 new HttpRequestMessage(HttpMethod.Head, url),
                 HttpCompletionOption.ResponseHeadersRead
             );
-            // Any HTTP response (even 4xx/5xx) means the tunnel is routing traffic
             UnityEngine.Debug.Log($"[CloudflaredTunnel] Health check OK — {(int)response.StatusCode}");
             return true;
         }

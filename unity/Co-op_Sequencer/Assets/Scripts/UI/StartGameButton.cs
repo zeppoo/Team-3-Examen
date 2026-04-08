@@ -73,9 +73,6 @@ public class StartGameButton : MonoBehaviour
 
         Debug.Log($"[StartGameButton] Starting game with {count} player(s). Loading scene '{gameSceneName}'.");
 
-        // LobbyManager is DontDestroyOnLoad so the Lobby data survives the scene load.
-        DontDestroyOnLoad(_lobbyManager.gameObject);
-
         SceneManager.LoadScene(gameSceneName);
     }
 }

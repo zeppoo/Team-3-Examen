@@ -38,7 +38,20 @@ export interface ErrorMessage {
 	reason: 'lobby_full' | string;
 }
 
-export type ServerMessage = ErrorMessage;
+// Sent by Unity immediately after a player joins, assigning their id and color.
+// Sent again when symbols are assigned with button image data.
+// {"type":"player_assigned","playerId":0,"color":"#fe0000","button1Symbol":"Square","button1Image":"<base64>","button2Symbol":"Heart","button2Image":"<base64>"}
+export interface PlayerAssignedMessage {
+	type: 'player_assigned';
+	playerId: number;
+	color: string;          // hex, e.g. "#fe0000"
+	button1Symbol?: string; // unique instrument
+	button1Image?: string;  // base64 PNG
+	button2Symbol?: string; // unique instrument
+	button2Image?: string;
+}
+
+export type ServerMessage = ErrorMessage | PlayerAssignedMessage;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 

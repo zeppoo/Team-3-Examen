@@ -8,6 +8,9 @@ public class Lobby
     public int maxPlayers;
     public List<Player> players = new List<Player>();
 
+    // One color per player slot — indices match player.id
+    private static readonly string[] PlayerColors = { "#fe0000", "#6fb9f8", "#79bf00", "#faff02" };
+
     public Lobby(string lobbyName, int maxPlayers = 4)
     {
         this.lobbyName  = lobbyName;
@@ -19,7 +22,9 @@ public class Lobby
     public Player AddPlayer(string clientId)
     {
         if (IsFull) return null;
-        var player = new Player(players.Count, clientId);
+        int index  = players.Count;
+        string color = index < PlayerColors.Length ? PlayerColors[index] : "#FFFFFF";
+        var player = new Player(index, clientId, color);
         players.Add(player);
         return player;
     }
