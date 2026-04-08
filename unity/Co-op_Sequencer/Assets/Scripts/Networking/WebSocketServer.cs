@@ -31,6 +31,12 @@ public class WebSocketServer : MonoBehaviour
     public event Action<string>         OnClientConnected;
     public event Action<string>         OnClientDisconnected;
 
+    /// <summary>
+    /// Optional gate called on the background thread before a client is registered.
+    /// Return false to immediately reject the connection.
+    /// </summary>
+    public Func<bool> CanClientConnect;
+
     private TcpListener _listener;
     private CancellationTokenSource _cts;
     private readonly Dictionary<string, TcpWsClient> _clients = new();
@@ -86,6 +92,11 @@ public class WebSocketServer : MonoBehaviour
         if (_clients.TryGetValue(clientId, out var c)) c.Send(json);
     }
 
+    public void DisconnectClient(string clientId)
+    {
+        if (_clients.TryGetValue(clientId, out var c)) c.Close();
+    }
+
     // ── Accept loop ───────────────────────────────────────────────────────
 
     private async Task AcceptLoop(CancellationToken ct)
@@ -131,6 +142,13 @@ public class WebSocketServer : MonoBehaviour
                 wsClient.Close();
                 return;
             }
+        }
+
+        if (CanClientConnect != null && !CanClientConnect())
+        {
+            wsClient.Send("{\"type\":\"error\",\"reason\":\"lobby_full\"}");
+            wsClient.Close();
+            return;
         }
 
         _clients[clientId] = wsClient;

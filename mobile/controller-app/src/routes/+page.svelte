@@ -6,6 +6,7 @@
 	let videoEl = $state<HTMLVideoElement | null>(null);
 	let error = $state<string | null>(null);
 	let scanning = $state(false);
+	let connecting = $state(false);
 	let stream: MediaStream | null = null;
 	let animFrame: number;
 
@@ -109,7 +110,7 @@
 		handleQR(codes[0].rawValue);
 	}
 
-	function handleQR(raw: string) {
+	async function handleQR(raw: string) {
 		const cleaned = raw.replace(/[^\x20-\x7E]/g, '');
 
 		let data: LobbyInfo;
@@ -124,21 +125,33 @@
 		if (!data.port) { error = `Missing "port" in: ${cleaned}`; return; }
 		if (!data.lobby) { error = `Missing "lobby" in: ${cleaned}`; return; }
 
+		connecting = true;
+		error = null;
+
 		try {
-			ws.connect(data.ip, Number(data.port), data.lobby);
+			const ok = await ws.connect(data.ip, Number(data.port), data.lobby);
+			if (ok) {
+				goto('/controller');
+			} else {
+				error = 'Could not connect to lobby. Please try again.';
+			}
 		} catch (e) {
 			error = `ws.connect failed: ${e}`;
-			return;
+		} finally {
+			connecting = false;
 		}
-
-		goto('/controller');
 	}
 </script>
 
 <div class="flex min-h-screen flex-col items-center justify-center gap-6 bg-gray-950 p-6 text-white">
 	<h1 class="text-2xl font-bold tracking-tight">Game Controller</h1>
 
-	{#if !scanning}
+	{#if connecting}
+		<div class="flex flex-col items-center gap-4">
+			<div class="spinner"></div>
+			<p class="text-sm text-gray-400">Connecting to lobby...</p>
+		</div>
+	{:else if !scanning}
 		<button
 			onclick={startScanner}
 			class="rounded-2xl bg-indigo-600 px-10 py-5 text-xl font-semibold active:bg-indigo-700"
@@ -180,3 +193,18 @@
 		<p class="rounded-xl bg-red-900/60 px-4 py-3 text-center text-sm text-red-300">{error}</p>
 	{/if}
 </div>
+
+<style>
+	.spinner {
+		width: 48px;
+		height: 48px;
+		border: 4px solid #374151;
+		border-top-color: #6366f1;
+		border-radius: 50%;
+		animation: spin 0.8s linear infinite;
+	}
+
+	@keyframes spin {
+		to { transform: rotate(360deg); }
+	}
+</style>
