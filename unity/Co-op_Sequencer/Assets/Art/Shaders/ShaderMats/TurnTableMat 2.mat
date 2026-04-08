@@ -66,7 +66,7 @@ Material:
     - _Softness: 0
     - _USE_SCREEN_SPACE: 1
     m_Colors:
-    - _BaseColor: {r: 1, g: 1, b: 1, a: 1}
+    - _BaseColor: {r: 0.17735851, g: 0.17735851, b: 0.17735851, a: 1}
     - _Dot_Color: {r: 0, g: 0, b: 0, a: 1}
   m_BuildTextureStacks: []
   m_AllowLocking: 1
