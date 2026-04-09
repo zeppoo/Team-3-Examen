@@ -7,9 +7,13 @@ interface WebSocketStore {
 	readonly status: ConnectionStatus;
 	readonly lobbyInfo: { ip: string; port: number; lobby: string } | null;
 	readonly lastError: ServerMessage | null;
+	readonly playerId: string | null;
 	readonly playerColor: string | null;
 	readonly button1Image: string | null;
 	readonly button2Image: string | null;
+	readonly score: number;
+	readonly lastHitPoints: number | null;
+	readonly lastRating: string | null;
 	connect(ip: string, port: number, lobby: string): Promise<boolean>;
 	send(msg: ControllerMessage): void;
 	disconnect(): void;
@@ -22,9 +26,19 @@ function createWebSocketStore(): WebSocketStore {
 	let status = $state<ConnectionStatus>('disconnected');
 	let lobbyInfo = $state<{ ip: string; port: number; lobby: string } | null>(null);
 	let lastError = $state<ServerMessage | null>(null);
+	let playerId = $state<string | null>(null);
 	let playerColor = $state<string | null>(null);
 	let button1Image = $state<string | null>(null);
 	let button2Image = $state<string | null>(null);
+	let score = $state<number>(0);
+	let lastHitPoints = $state<number | null>(null);
+	let lastRating = $state<string | null>(null);
+
+	let intentionalClose = false;
+	let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+	const MAX_RECONNECT_ATTEMPTS = 5;
+	const RECONNECT_DELAY_MS = 1500;
+	let reconnectAttempts = 0;
 
 	async function waitForTunnel(host: string, maxAttempts = 10, intervalMs = 500): Promise<boolean> {
 		const url = `https://${host}`;
@@ -44,12 +58,19 @@ function createWebSocketStore(): WebSocketStore {
 
 	let _connectResolve: ((ok: boolean) => void) | null = null;
 
-	async function connect(ip: string, port: number, lobby: string): Promise<boolean> {
+	async function connect(ip: string, port: number, lobby: string, isReconnect = false): Promise<boolean> {
 		if (socket) {
+			// Detach handlers so the old socket's onclose doesn't trigger reconnect
+			socket.onclose = null;
+			socket.onerror = null;
+			socket.onmessage = null;
 			logger.net(`Closing existing socket before reconnect`);
 			socket.close();
+			socket = null;
 		}
 
+		intentionalClose = false;
+		if (!isReconnect) reconnectAttempts = 0;
 		status = 'connecting';
 		lobbyInfo = { ip, port, lobby };
 		const result = new Promise<boolean>(res => { _connectResolve = res; });
@@ -82,6 +103,7 @@ function createWebSocketStore(): WebSocketStore {
 			logger.net(`Connected ✓ — ${url} (${ms}ms)`);
 			lastError = null;
 			status = 'connected';
+			reconnectAttempts = 0;
 			_connectResolve?.(true);
 			_connectResolve = null;
 		};
@@ -89,17 +111,31 @@ function createWebSocketStore(): WebSocketStore {
 		socket.onmessage = (e) => {
 			try {
 				const msg = JSON.parse(e.data) as ServerMessage;
-				logger.net(`Server message: ${e.data}`);
+				const preview = e.data.length > 200 ? e.data.slice(0, 200) + '...' : e.data;
+				logger.net(`Server message (${e.data.length} chars): ${preview}`);
 
 				if (msg.type === 'error') {
 					lastError = msg;
 					logger.error(`Server error: ${msg.reason}`);
+					intentionalClose = true; // Don't auto-reconnect on server errors
 					socket?.close();
 				} else if (msg.type === 'player_assigned') {
+					playerId = String(msg.playerId);
 					playerColor = msg.color;
-					if (msg.button1Image) button1Image = `data:image/png;base64,${msg.button1Image}`;
-					if (msg.button2Image) button2Image = `data:image/png;base64,${msg.button2Image}`;
-					logger.net(`Player assigned color: ${msg.color}`);
+					if (msg.button1Image) {
+						button1Image = `data:image/png;base64,${msg.button1Image}`;
+						logger.net(`button1Image received: ${msg.button1Image.length} chars`);
+					}
+					if (msg.button2Image) {
+						button2Image = `data:image/png;base64,${msg.button2Image}`;
+						logger.net(`button2Image received: ${msg.button2Image.length} chars`);
+					}
+					logger.net(`Player assigned id=${playerId} color=${msg.color} hasB1=${!!button1Image} hasB2=${!!button2Image}`);
+				} else if (msg.type === 'score_update') {
+					score = msg.score;
+					lastHitPoints = msg.lastHitPoints;
+					lastRating = msg.rating;
+					logger.net(`Score update: ${score} (${msg.rating} +${msg.lastHitPoints})`);
 				}
 			} catch {
 				logger.warn(`Unreadable server message: ${e.data}`);
@@ -115,7 +151,7 @@ function createWebSocketStore(): WebSocketStore {
 			logger.error(`    • Server not reachable (wrong IP/port?)`);
 			logger.error(`    • Self-signed cert not trusted (open ${protocol === 'wss' ? `https://${ip}${isDefaultPort ? '' : `:${port}`}` : 'n/a'} in Chrome first)`);
 			logger.error(`    • Mixed content blocked (page=https but ws=ws://)`);
-			status = 'error';
+			// Don't set status to 'error' here — onclose will fire next and handle reconnect
 			_connectResolve?.(false);
 			_connectResolve = null;
 		};
@@ -131,8 +167,21 @@ function createWebSocketStore(): WebSocketStore {
 				e.code === 1015 ? 'TLS handshake failed' :
 				'';
 			if (hint) logger.warn(`  Close code ${e.code}: ${hint}`);
-			status = 'disconnected';
 			socket = null;
+
+			// Auto-reconnect on unexpected closure
+			if (!intentionalClose && lobbyInfo && reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+				reconnectAttempts++;
+				status = 'connecting';
+				logger.net(`Auto-reconnect attempt ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS} in ${RECONNECT_DELAY_MS}ms...`);
+				reconnectTimer = setTimeout(() => {
+					if (lobbyInfo) {
+						connect(lobbyInfo.ip, lobbyInfo.port, lobbyInfo.lobby, true);
+					}
+				}, RECONNECT_DELAY_MS);
+			} else {
+				status = 'disconnected';
+			}
 		};
 
 		return result;
@@ -147,12 +196,19 @@ function createWebSocketStore(): WebSocketStore {
 	}
 
 	function disconnect() {
+		intentionalClose = true;
+		if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
+		reconnectAttempts = 0;
 		socket?.close();
 		lobbyInfo = null;
 		lastError = null;
+		playerId = null;
 		playerColor = null;
 		button1Image = null;
 		button2Image = null;
+		score = 0;
+		lastHitPoints = null;
+		lastRating = null;
 	}
 
 	function bypassForTesting() {
@@ -164,10 +220,14 @@ function createWebSocketStore(): WebSocketStore {
 		get status() { return status; },
 		get lobbyInfo() { return lobbyInfo; },
 		get lastError() { return lastError; },
+		get playerId() { return playerId; },
 		get playerColor() { return playerColor; },
 		get button1Image() { return button1Image; },
 		get button2Image() { return button2Image; },
-		connect: (ip: string, port: number, lobby: string): Promise<boolean> => connect(ip, port, lobby),
+		get score() { return score; },
+		get lastHitPoints() { return lastHitPoints; },
+		get lastRating() { return lastRating; },
+		connect: (ip: string, port: number, lobby: string): Promise<boolean> => connect(ip, port, lobby, false),
 		send,
 		disconnect,
 		bypassForTesting

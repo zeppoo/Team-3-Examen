@@ -1,7 +1,5 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
-<<<<<<< HEAD
-=======
 --- !u!114 &-7032467741497072536
 MonoBehaviour:
   m_ObjectHideFlags: 3
@@ -98,7 +96,6 @@ MonoBehaviour:
   maxNits:
     m_OverrideState: 0
     m_Value: 1000
->>>>>>> 6d8536dbe4c72b899dd97ef4d809388522010d6f
 --- !u!114 &11400000
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -112,10 +109,6 @@ MonoBehaviour:
   m_Name: Global Volume Profile 1
   m_EditorClassIdentifier: Unity.RenderPipelines.Core.Runtime::UnityEngine.Rendering.VolumeProfile
   components:
-<<<<<<< HEAD
-  - {fileID: 2407833326833387027}
---- !u!114 &2407833326833387027
-=======
   - {fileID: -1079607264840564297}
   - {fileID: -2966365197944947053}
   - {fileID: -7032467741497072536}
@@ -123,7 +116,6 @@ MonoBehaviour:
   - {fileID: 6475702967433371322}
   - {fileID: 9044602486319658698}
 --- !u!114 &6475702967433371322
->>>>>>> 6d8536dbe4c72b899dd97ef4d809388522010d6f
 MonoBehaviour:
   m_ObjectHideFlags: 3
   m_CorrespondingSourceObject: {fileID: 0}
@@ -132,13 +124,6 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-<<<<<<< HEAD
-  m_Script: {fileID: 11500000, guid: 81180773991d8724ab7f2d216912b564, type: 3}
-  m_Name: ChromaticAberration
-  m_EditorClassIdentifier: Unity.RenderPipelines.Universal.Runtime::UnityEngine.Rendering.Universal.ChromaticAberration
-  active: 1
-  intensity:
-=======
   m_Script: {fileID: 11500000, guid: c5e1dc532bcb41949b58bc4f2abfbb7e, type: 3}
   m_Name: LensDistortion
   m_EditorClassIdentifier: Unity.RenderPipelines.Universal.Runtime::UnityEngine.Rendering.Universal.LensDistortion
@@ -200,6 +185,5 @@ MonoBehaviour:
     m_OverrideState: 1
     m_Value: 10
   tint:
->>>>>>> 6d8536dbe4c72b899dd97ef4d809388522010d6f
     m_OverrideState: 0
     m_Value: 0
