@@ -31,6 +31,7 @@ public class SymbolScroller : MonoBehaviour
     [Header("Settings")]
     [SerializeField] private int   visibleQueueSize = 5; // how many upcoming symbols to show
     [SerializeField] private float beatInterval = 1f;     // seconds per symbol (placeholder until BPM is wired)
+    public float BeatInterval { get => beatInterval; set => beatInterval = Mathf.Max(0.2f, value); }
 
     [Header("Scratch")]
     [SerializeField] private float scratchVelocityThreshold = 3f;
@@ -54,6 +55,12 @@ public class SymbolScroller : MonoBehaviour
 
     /// <summary>Fired on a successful hit with the points earned (0 for miss).</summary>
     public event Action<int> OnTimingScored;
+
+    /// <summary>Fired when the correct player presses the wrong button/scratch direction.</summary>
+    public event Action OnWrongInput;
+
+    /// <summary>Fired when the entire sequence has been completed.</summary>
+    public event Action OnSequenceComplete;
 
     // State
     private SymbolInstance[] _sequence;
@@ -180,8 +187,17 @@ public class SymbolScroller : MonoBehaviour
         if (_currentIndex >= _sequence.Length) return;
 
         var active = _sequence[_currentIndex];
+
+        // Wrong player — ignore (not their turn)
         if (active.playerId != playerId) return;
-        if (active.symbolType != expectedSymbol) return;
+
+        // Right player, wrong input — penalize
+        if (active.symbolType != expectedSymbol)
+        {
+            Debug.Log($"[SymbolScroller] WRONG input from player {playerId}: expected {active.symbolType}, got {expectedSymbol}");
+            OnWrongInput?.Invoke();
+            return;
+        }
 
         _activeHit = true;
 
@@ -283,6 +299,7 @@ public class SymbolScroller : MonoBehaviour
             _running = false;
             ClearAll();
             Debug.Log("[SymbolScroller] Sequence complete.");
+            OnSequenceComplete?.Invoke();
             return;
         }
 
@@ -388,8 +405,8 @@ public class SymbolScroller : MonoBehaviour
         float halfW = activeSlot.rect.width  * 0.5f + indicatorOrbitPadding;
         float halfH = activeSlot.rect.height * 0.5f + indicatorOrbitPadding;
 
-        // Angle: start at top (90°), go clockwise (subtract)
-        float angle = (0.5f - progress) * Mathf.PI * 2f;
+        // Start at top (π/2), move clockwise (subtract full rotation over progress)
+        float angle = Mathf.PI * 0.5f - progress * Mathf.PI * 2f;
         float x = Mathf.Cos(angle) * halfW;
         float y = Mathf.Sin(angle) * halfH;
 

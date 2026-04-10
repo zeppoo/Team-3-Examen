@@ -20,12 +20,17 @@ public class GameStarter : MonoBehaviour
     [SerializeField] private float fadeDuration    = 0.5f;
 
     [Header("Round Settings")]
+    [SerializeField] private int   totalRounds    = 3;
     [SerializeField] private float roundSpeed     = 1.5f;
     [SerializeField] private int   sequenceLength = 20;
+    [SerializeField] private float delayBetweenRounds = 2f;
+    [Tooltip("Each round the beat interval is multiplied by this (e.g. 0.85 = 15% faster).")]
+    [SerializeField] private float speedMultiplierPerRound = 0.85f;
 
     private LobbyManager _lobbyManager;
     private bool _paused;
     private bool _roundStarted;
+    private int  _currentRound = 0;
     private Coroutine _startCoroutine;
 
     void Start()
@@ -43,6 +48,7 @@ public class GameStarter : MonoBehaviour
 
         _lobbyManager.OnPlayerDisconnected += OnPlayerDisconnected;
         _lobbyManager.OnPlayerReconnected  += OnPlayerReconnected;
+        symbolScroller.OnSequenceComplete  += OnRoundComplete;
 
         _startCoroutine = StartCoroutine(StartRoundSequence());
     }
@@ -54,6 +60,8 @@ public class GameStarter : MonoBehaviour
             _lobbyManager.OnPlayerDisconnected -= OnPlayerDisconnected;
             _lobbyManager.OnPlayerReconnected  -= OnPlayerReconnected;
         }
+        if (symbolScroller != null)
+            symbolScroller.OnSequenceComplete -= OnRoundComplete;
     }
 
     // ── Pause / Resume ───────────────────────────────────────────────────
@@ -101,18 +109,39 @@ public class GameStarter : MonoBehaviour
         Debug.Log("[GameStarter] Game resumed — all players reconnected.");
     }
 
-    // ── Round start ──────────────────────────────────────────────────────
+    // ── Round lifecycle ────────────────────────────────────────────────
+
+    private void OnRoundComplete()
+    {
+        _roundStarted = false;
+
+        if (_currentRound >= totalRounds)
+        {
+            Debug.Log("[GameStarter] All rounds complete!");
+            StartCoroutine(ShowAnnouncementCoroutine("Game Over!"));
+            return;
+        }
+
+        StartCoroutine(NextRoundSequence());
+    }
+
+    private IEnumerator NextRoundSequence()
+    {
+        yield return StartCoroutine(ShowAnnouncementCoroutine($"Round {_currentRound} Complete!"));
+        yield return new WaitForSeconds(delayBetweenRounds);
+        _startCoroutine = StartCoroutine(StartRoundSequence());
+    }
 
     private IEnumerator StartRoundSequence()
     {
+        _currentRound++;
+
         gameManager.StartNewRound(roundSpeed, sequenceLength, _lobbyManager.Lobby.players);
         _lobbyManager.SendSymbolAssignments();
 
-        int roundNumber = gameManager.rounds.Count;
-
         if (announcementText != null)
         {
-            announcementText.text  = $"Round {roundNumber}!";
+            announcementText.text  = $"Round {_currentRound}!";
             announcementText.alpha = 1f;
             announcementText.gameObject.SetActive(true);
 
@@ -129,6 +158,10 @@ public class GameStarter : MonoBehaviour
             announcementText.alpha = 0f;
             announcementText.gameObject.SetActive(false);
         }
+
+        // Speed up the beat interval each round
+        if (_currentRound > 1)
+            symbolScroller.BeatInterval *= speedMultiplierPerRound;
 
         _roundStarted = true;
         symbolScroller.StartScrolling();

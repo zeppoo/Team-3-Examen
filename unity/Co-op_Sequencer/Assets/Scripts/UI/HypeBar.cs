@@ -18,8 +18,11 @@ public class HypeBar : MonoBehaviour
     [Tooltip("How much a perfect hit (100 pts) fills the bar (0-1 scale).")]
     [SerializeField] private float fillPerPerfect = 0.10f;
 
-    [Tooltip("How much the bar drains on a miss.")]
+    [Tooltip("How much the bar drains on a timeout miss.")]
     [SerializeField] private float drainOnMiss = 0.08f;
+
+    [Tooltip("How much the bar drains on a wrong input (wrong button press).")]
+    [SerializeField] private float drainOnWrongInput = 0.05f;
 
     [Tooltip("Passive drain per second to keep pressure on the player.")]
     [SerializeField] private float passiveDrain = 0.01f;
@@ -40,13 +43,19 @@ public class HypeBar : MonoBehaviour
     void OnEnable()
     {
         if (symbolScroller != null)
+        {
             symbolScroller.OnTimingScored += HandleTimingScored;
+            symbolScroller.OnWrongInput   += HandleWrongInput;
+        }
     }
 
     void OnDisable()
     {
         if (symbolScroller != null)
+        {
             symbolScroller.OnTimingScored -= HandleTimingScored;
+            symbolScroller.OnWrongInput   -= HandleWrongInput;
+        }
     }
 
     void Update()
@@ -68,6 +77,11 @@ public class HypeBar : MonoBehaviour
             float fill = fillPerPerfect * ((float)points / maxPoints);
             _slider.value = Mathf.Min(1f, _slider.value + fill);
         }
+    }
+
+    private void HandleWrongInput()
+    {
+        _slider.value = Mathf.Max(0f, _slider.value - drainOnWrongInput);
     }
 
     /// <summary>Current hype level 0-1.</summary>

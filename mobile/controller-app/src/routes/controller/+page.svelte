@@ -44,7 +44,7 @@
 		padPointers[id] = e.pointerId;
 		(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
 		pressed[id] = true;
-		navigator.vibrate?.(5);
+		navigator.vibrate?.(50);
 		ws.send(buttonMessage(id, 'press', ws.playerId ?? ''));
 	}
 
@@ -184,9 +184,9 @@
 			<div class="error-box">
 				<span class="error-icon">⚠</span>
 				<p class="error-title">
-					{ws.lastError.reason === 'lobby_full' ? 'Lobby is full' : 'Connection error'}
+					{'reason' in ws.lastError && ws.lastError.reason === 'lobby_full' ? 'Lobby is full' : 'Connection error'}
 				</p>
-				<p class="error-reason">{ws.lastError.reason}</p>
+				<p class="error-reason">{'reason' in ws.lastError ? ws.lastError.reason : 'unknown'}</p>
 				<button class="error-back" onclick={disconnect}>Back to scanner</button>
 			</div>
 		</div>
