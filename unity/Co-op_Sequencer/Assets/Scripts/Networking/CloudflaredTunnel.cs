@@ -57,7 +57,12 @@ public class CloudflaredTunnel : MonoBehaviour
         Task.Run(() => StartTunnelOnce(_cts.Token));
     }
 
-    void OnDestroy() => KillTunnel();
+    void OnDestroy()
+    {
+        // Only kill the tunnel if this instance actually started one.
+        // Prevents a duplicate (destroyed by LobbyManager) from killing the real tunnel.
+        if (_process != null) KillTunnel();
+    }
     void OnApplicationQuit() => KillTunnel();
 
     /// <summary>Kills the current tunnel and starts a fresh one.</summary>
@@ -265,8 +270,13 @@ public class CloudflaredTunnel : MonoBehaviour
                 new HttpRequestMessage(HttpMethod.Head, url),
                 HttpCompletionOption.ResponseHeadersRead
             );
-            UnityEngine.Debug.Log($"[CloudflaredTunnel] Health check OK — {(int)response.StatusCode}");
-            return true;
+            int code = (int)response.StatusCode;
+            bool ok  = code >= 200 && code < 500;
+            if (ok)
+                UnityEngine.Debug.Log($"[CloudflaredTunnel] Health check OK — {code}");
+            else
+                UnityEngine.Debug.LogWarning($"[CloudflaredTunnel] Health check bad status — {code}");
+            return ok;
         }
         catch (Exception ex)
         {

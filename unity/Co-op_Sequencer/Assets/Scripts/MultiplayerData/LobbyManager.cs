@@ -24,6 +24,12 @@ public class LobbyManager : MonoBehaviour
     /// <summary>Fired on the main thread when a player leaves.</summary>
     public event Action<Player> OnPlayerLeft;
 
+    /// <summary>Fired when a player disconnects during a game.</summary>
+    public event Action<Player> OnPlayerDisconnected;
+
+    /// <summary>Fired when a player reconnects during a game.</summary>
+    public event Action<Player> OnPlayerReconnected;
+
     private readonly Dictionary<string, PlayerInputReceiver> _receivers = new();
     private WebSocketServer _server;
 
@@ -39,7 +45,7 @@ public class LobbyManager : MonoBehaviour
 
         Lobby   = new Lobby(lobbyName, maxPlayers);
         _server = GetComponent<WebSocketServer>();
-        _server.CanClientConnect = () => !Lobby.IsFull;
+        _server.CanClientConnect = () => GameStarted || !Lobby.IsFull;
     }
 
     void OnEnable()
@@ -92,30 +98,101 @@ public class LobbyManager : MonoBehaviour
 
             Debug.Log($"[LobbyManager] Player {player.id}: b1Image={(b1Img != null ? $"{b1Img.Length} chars" : "NULL")}, b2Image={(b2Img != null ? $"{b2Img.Length} chars" : "NULL")}");
 
-            var msg = JsonUtility.ToJson(new PlayerAssignedMessage
+            // Send button1 image
+            var msg1 = JsonUtility.ToJson(new PlayerAssignedMessage
             {
                 playerId      = player.id,
                 color         = player.color,
                 button1Symbol = player.button1Symbol.ToString(),
                 button1Image  = b1Img,
+                button2Symbol = "",
+                button2Image  = "",
+            });
+            _server.SendToClient(player.clientId, msg1);
+            Debug.Log($"[LobbyManager] Sent button1 to player {player.id}: {player.button1Symbol} ({msg1.Length} chars)");
+
+            // Send button2 image
+            var msg2 = JsonUtility.ToJson(new PlayerAssignedMessage
+            {
+                playerId      = player.id,
+                color         = player.color,
+                button1Symbol = "",
+                button1Image  = "",
                 button2Symbol = player.button2Symbol.ToString(),
                 button2Image  = b2Img,
             });
-            _server.SendToClient(player.clientId, msg);
-            Debug.Log($"[LobbyManager] Sent symbols to player {player.id}: {player.button1Symbol} / {player.button2Symbol}");
+            _server.SendToClient(player.clientId, msg2);
+            Debug.Log($"[LobbyManager] Sent button2 to player {player.id}: {player.button2Symbol} ({msg2.Length} chars)");
         }
     }
+
+    /// <summary>
+    /// Sends a score update to a specific player's phone.
+    /// </summary>
+    public void SendScoreUpdate(int playerId, int totalScore, int lastHitPoints, string rating)
+    {
+        var player = Lobby.GetPlayerById(playerId);
+        if (player == null || !player.connected) return;
+
+        var msg = JsonUtility.ToJson(new ScoreUpdateMessage
+        {
+            playerId      = playerId,
+            score         = totalScore,
+            lastHitPoints = lastHitPoints,
+            rating        = rating,
+        });
+        _server.SendToClient(player.clientId, msg);
+    }
+
+    /// <summary>True once the first round has started — reconnecting clients
+    /// are mapped back to their existing Player instead of creating a new one.</summary>
+    public bool GameStarted { get; set; }
+
+    /// <summary>True when all lobby players are connected.</summary>
+    public bool AllPlayersConnected => Lobby.players.TrueForAll(p => p.connected);
 
     // ── Connection handling ───────────────────────────────────────────────
 
     private void HandleClientConnected(string clientId)
     {
+        // During a game, try to reconnect to a disconnected player slot
+        if (GameStarted)
+        {
+            var disconnected = Lobby.GetFirstDisconnected();
+            if (disconnected != null)
+            {
+                var oldClientId = disconnected.clientId;
+                disconnected.clientId  = clientId;
+                disconnected.connected = true;
+
+                // Move the receiver to the new clientId
+                if (_receivers.TryGetValue(oldClientId, out var recv))
+                {
+                    _receivers.Remove(oldClientId);
+                    _receivers[clientId] = recv;
+                }
+
+                var msg = JsonUtility.ToJson(new PlayerAssignedMessage { playerId = disconnected.id, color = disconnected.color });
+                _server.SendToClient(clientId, msg);
+
+                Debug.Log($"[LobbyManager] Player {disconnected.id} reconnected ({oldClientId} → {clientId})");
+                OnPlayerReconnected?.Invoke(disconnected);
+                return;
+            }
+
+            // Game in progress but no disconnected slot — reject
+            Debug.LogWarning($"[LobbyManager] Rejecting client {clientId} — game in progress, no open slot.");
+            _server.SendToClient(clientId, "{\"type\":\"error\",\"reason\":\"game_in_progress\"}");
+            _server.DisconnectClient(clientId);
+            return;
+        }
+
         var player   = Lobby.AddPlayer(clientId);
         var receiver = new PlayerInputReceiver(player);
         _receivers[clientId] = receiver;
 
-        var msg = JsonUtility.ToJson(new PlayerAssignedMessage { playerId = player.id, color = player.color });
-        _server.SendToClient(clientId, msg);
+        var msg2 = JsonUtility.ToJson(new PlayerAssignedMessage { playerId = player.id, color = player.color });
+        _server.SendToClient(clientId, msg2);
 
         Debug.Log($"[LobbyManager] Player {player.id} ({player.color}) joined ({clientId})");
         OnPlayerJoined?.Invoke(receiver);
@@ -124,6 +201,15 @@ public class LobbyManager : MonoBehaviour
     private void HandleClientDisconnected(string clientId)
     {
         if (!_receivers.TryGetValue(clientId, out var receiver)) return;
+
+        if (GameStarted)
+        {
+            // Keep the player in the lobby — just mark as disconnected
+            receiver.player.connected = false;
+            Debug.Log($"[LobbyManager] Player {receiver.player.id} disconnected (kept in lobby)");
+            OnPlayerDisconnected?.Invoke(receiver.player);
+            return;
+        }
 
         _receivers.Remove(clientId);
         var player = receiver.player;
@@ -135,19 +221,34 @@ public class LobbyManager : MonoBehaviour
 
     // ── Input routing ─────────────────────────────────────────────────────
 
+    private PlayerInputReceiver ResolveReceiver(string playerField)
+    {
+        // Try direct clientId lookup first
+        if (_receivers.TryGetValue(playerField, out var receiver))
+            return receiver;
+
+        // Try as playerId (int) — find the player, then look up by their clientId
+        if (int.TryParse(playerField, out int id))
+        {
+            var player = Lobby.GetPlayerById(id);
+            if (player != null && _receivers.TryGetValue(player.clientId, out var recv))
+                return recv;
+        }
+
+        return null;
+    }
+
     private void RouteButton(ButtonInputEvent e)
     {
-        if (_receivers.TryGetValue(e.player, out var receiver))
+        var receiver = ResolveReceiver(e.player);
+        if (receiver != null)
             receiver.DispatchButton(e);
-        else
-            Debug.LogWarning($"[LobbyManager] Button input from unknown player {e.player}");
     }
 
     private void RouteScratch(ScratchInputEvent e)
     {
-        if (_receivers.TryGetValue(e.player, out var receiver))
+        var receiver = ResolveReceiver(e.player);
+        if (receiver != null)
             receiver.DispatchScratch(e);
-        else
-            Debug.LogWarning($"[LobbyManager] Scratch input from unknown player {e.player}");
     }
 }

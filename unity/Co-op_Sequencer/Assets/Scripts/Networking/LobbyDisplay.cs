@@ -155,14 +155,14 @@ public class LobbyDisplay : MonoBehaviour
 
     private void OnClientConnected(string clientId)
     {
-        if (statusText != null)
+        if (statusText)
             statusText.text = $"Players connected: {_server.ConnectedClientCount}";
         Debug.Log($"[LobbyDisplay] Player joined: {clientId}");
     }
 
     private void OnClientDisconnected(string clientId)
     {
-        if (statusText != null)
+        if (statusText)
             statusText.text = _server.ConnectedClientCount > 0
                 ? $"Players connected: {_server.ConnectedClientCount}"
                 : "Waiting for players...";
