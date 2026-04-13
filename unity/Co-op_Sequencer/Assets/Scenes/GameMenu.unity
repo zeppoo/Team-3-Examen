@@ -1824,7 +1824,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 1760620666448611971, guid: 9e21b3c3d441a58999064b397dca30fd, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 0
+      value: 736.42065
       objectReference: {fileID: 0}
     - target: {fileID: 1760620666448611971, guid: 9e21b3c3d441a58999064b397dca30fd, type: 3}
       propertyPath: m_LocalPosition.y
@@ -1832,7 +1832,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1760620666448611971, guid: 9e21b3c3d441a58999064b397dca30fd, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 0
+      value: 12812.24
       objectReference: {fileID: 0}
     - target: {fileID: 1760620666448611971, guid: 9e21b3c3d441a58999064b397dca30fd, type: 3}
       propertyPath: m_LocalRotation.w
@@ -1861,10 +1861,6 @@ PrefabInstance:
     - target: {fileID: 1760620666448611971, guid: 9e21b3c3d441a58999064b397dca30fd, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 2871234435648437805, guid: 9e21b3c3d441a58999064b397dca30fd, type: 3}
-      propertyPath: maxPlayers
-      value: 3
       objectReference: {fileID: 0}
     - target: {fileID: 6118621519480330326, guid: 9e21b3c3d441a58999064b397dca30fd, type: 3}
       propertyPath: qrImage

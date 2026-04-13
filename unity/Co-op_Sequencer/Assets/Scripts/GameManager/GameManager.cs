@@ -66,33 +66,8 @@ public class GameManager : MonoBehaviour
         tex.SetPixels(src.GetPixels((int)rect.x, (int)rect.y, (int)rect.width, (int)rect.height));
         tex.Apply();
 
-        // Downscale to max 128px for mobile (keeps message small for Cloudflare tunnel)
-        const int maxSize = 128;
-        if (tex.width > maxSize || tex.height > maxSize)
-        {
-            float scale = Mathf.Min((float)maxSize / tex.width, (float)maxSize / tex.height);
-            int newW = Mathf.Max(1, Mathf.RoundToInt(tex.width * scale));
-            int newH = Mathf.Max(1, Mathf.RoundToInt(tex.height * scale));
-
-            var rt = RenderTexture.GetTemporary(newW, newH, 0, RenderTextureFormat.ARGB32);
-            Graphics.Blit(tex, rt);
-
-            var prev = RenderTexture.active;
-            RenderTexture.active = rt;
-            var small = new Texture2D(newW, newH, TextureFormat.RGBA32, false);
-            small.ReadPixels(new UnityEngine.Rect(0, 0, newW, newH), 0, 0);
-            small.Apply();
-            RenderTexture.active = prev;
-            RenderTexture.ReleaseTemporary(rt);
-
-            Object.Destroy(tex);
-            tex = small;
-        }
-
-        int finalW = tex.width, finalH = tex.height;
         var png = ImageConversion.EncodeToPNG(tex);
         Object.Destroy(tex);
-        Debug.Log($"[GameManager] SpriteToBase64({type}): {finalW}x{finalH} → {png.Length} bytes");
         return System.Convert.ToBase64String(png);
     }
 

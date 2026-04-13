@@ -44,15 +44,15 @@
 		padPointers[id] = e.pointerId;
 		(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
 		pressed[id] = true;
-		navigator.vibrate?.(50);
-		ws.send(buttonMessage(id, 'press', ws.playerId ?? ''));
+		navigator.vibrate?.(5);
+		ws.send(buttonMessage(id, 'press'));
 	}
 
 	function release(id: 'button1' | 'button2', e: PointerEvent) {
 		if (padPointers[id] !== e.pointerId) return; // not the owning pointer
 		delete padPointers[id];
 		pressed[id] = false;
-		ws.send(buttonMessage(id, 'release', ws.playerId ?? ''));
+		ws.send(buttonMessage(id, 'release'));
 	}
 
 	function scratchStart(e: PointerEvent) {
@@ -68,7 +68,7 @@
 		lastY = e.clientY;
 		velocity = dy * 1.5;
 		rotation += velocity;
-		ws.send(scratchMessage(velocity, ws.playerId ?? ''));
+		ws.send(scratchMessage(velocity));
 
 		const intensity = Math.min(Math.round(Math.abs(velocity) * 6), 80);
 		if (intensity > 2) navigator.vibrate?.(intensity);
@@ -142,11 +142,8 @@
 			<div class="screen-divider"></div>
 			<div class="screen-row">
 				<span class="screen-label">SCORE</span>
-				<span class="screen-value">{String(ws.score).padStart(4, '0')}</span>
+				<span class="screen-value">0000</span>
 			</div>
-			{#if ws.lastRating}
-				<div class="screen-rating {ws.lastRating}">{ws.lastRating.toUpperCase()}</div>
-			{/if}
 		</div>
 	</div>
 
@@ -184,9 +181,9 @@
 			<div class="error-box">
 				<span class="error-icon">⚠</span>
 				<p class="error-title">
-					{'reason' in ws.lastError && ws.lastError.reason === 'lobby_full' ? 'Lobby is full' : 'Connection error'}
+					{ws.lastError.reason === 'lobby_full' ? 'Lobby is full' : 'Connection error'}
 				</p>
-				<p class="error-reason">{'reason' in ws.lastError ? ws.lastError.reason : 'unknown'}</p>
+				<p class="error-reason">{ws.lastError.reason}</p>
 				<button class="error-back" onclick={disconnect}>Back to scanner</button>
 			</div>
 		</div>
@@ -234,9 +231,6 @@
 		position: relative;
 		overflow: hidden;
 		touch-action: none;
-		display: flex;
-		align-items: center;
-		justify-content: center;
 
 		background:
 			radial-gradient(ellipse at 30% 25%, color-mix(in srgb, var(--color) 70%, white 30%) 0%, var(--color) 55%, color-mix(in srgb, var(--color) 60%, black 40%) 100%);
@@ -349,28 +343,6 @@
 		height: 1px;
 		background: color-mix(in srgb, var(--sc) 15%, transparent);
 		margin: 0 4px;
-	}
-
-	.screen-rating {
-		font-family: monospace;
-		font-size: 0.65rem;
-		font-weight: 700;
-		letter-spacing: 0.15em;
-		text-align: center;
-		text-transform: uppercase;
-		padding: 2px 0;
-		animation: rating-flash 0.6s ease-out;
-	}
-
-	.screen-rating.perfect { color: #22c55e; text-shadow: 0 0 8px #22c55e88; }
-	.screen-rating.good    { color: #eab308; text-shadow: 0 0 8px #eab30888; }
-	.screen-rating.ok      { color: #f97316; text-shadow: 0 0 8px #f9731688; }
-	.screen-rating.miss    { color: #ef4444; text-shadow: 0 0 8px #ef444488; }
-
-	@keyframes rating-flash {
-		0%   { opacity: 0; transform: scale(1.4); }
-		30%  { opacity: 1; transform: scale(1); }
-		100% { opacity: 0.7; transform: scale(1); }
 	}
 
 	/* ── Scratch area ── */

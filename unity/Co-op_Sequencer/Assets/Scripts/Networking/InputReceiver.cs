@@ -49,7 +49,7 @@ public class InputReceiver : MonoBehaviour
             case "button":
                 var raw = JsonUtility.FromJson<ButtonMessage>(json);
                 var buttonEvent = new ButtonInputEvent(
-                    player:  string.IsNullOrEmpty(raw.player) ? clientId : raw.player,
+                    player:  raw.player ?? clientId,
                     button:  raw.button,
                     state:   raw.state == "press" ? ButtonState.Press : ButtonState.Release
                 );
@@ -60,7 +60,7 @@ public class InputReceiver : MonoBehaviour
             case "scratch":
                 var rawScratch = JsonUtility.FromJson<ScratchMessage>(json);
                 var scratchEvent = new ScratchInputEvent(
-                    player:   string.IsNullOrEmpty(rawScratch.player) ? clientId : rawScratch.player,
+                    player:   rawScratch.player ?? clientId,
                     velocity: rawScratch.velocity
                 );
                 Debug.Log($"[Input] {scratchEvent.player} scratch velocity={scratchEvent.velocity:F2}");

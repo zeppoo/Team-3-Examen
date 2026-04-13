@@ -73,10 +73,6 @@ public class StartGameButton : MonoBehaviour
 
         Debug.Log($"[StartGameButton] Starting game with {count} player(s). Loading scene '{gameSceneName}'.");
 
-        // Mark game as started BEFORE the scene switch so players aren't
-        // removed from the lobby if they briefly disconnect during the transition.
-        _lobbyManager.GameStarted = true;
-
         SceneManager.LoadScene(gameSceneName);
     }
 }
