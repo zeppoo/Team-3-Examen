@@ -5,6 +5,8 @@ TagManager:
   serializedVersion: 3
   tags:
   - Symbol
+  - Light
+  - ConeLight
   layers:
   - Default
   - TransparentFX

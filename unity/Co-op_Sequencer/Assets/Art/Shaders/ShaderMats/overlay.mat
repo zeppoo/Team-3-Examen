@@ -43,8 +43,8 @@ Material:
     - _ColorGradient: 0
     - _QueueControl: 0
     - _QueueOffset: 0
-    - _Strengt: 0.0032
-    - _transperentsy: 0.1
+    - _Strengt: 0.02
+    - _transperentsy: 1
     m_Colors:
     - _Color: {r: 1, g: 0.9215686, b: 0.01568628, a: 1}
     - _Derection: {r: 1, g: 0, b: 0, a: 0}

@@ -342,6 +342,8 @@ GameObject:
   - component: {fileID: 135771394}
   - component: {fileID: 135771393}
   - component: {fileID: 135771395}
+  - component: {fileID: 135771397}
+  - component: {fileID: 135771396}
   m_Layer: 0
   m_Name: GameManager
   m_TagString: Untagged
@@ -410,6 +412,33 @@ MonoBehaviour:
   sequenceLength: 20
   delayBetweenRounds: 2
   speedMultiplierPerRound: 0.85
+--- !u!114 &135771396
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 135771392}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: af6b276645b08c644bfce85e04786678, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::WorldStateManager
+  hypeBar: {fileID: 1638617002}
+--- !u!114 &135771397
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 135771392}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c9ba30559236e43439e9bb96dd1381f5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::LightData
+  volLights: []
+  coneLights: []
 --- !u!1 &194233295
 GameObject:
   m_ObjectHideFlags: 0
@@ -1006,6 +1035,22 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 1024401204448057861, guid: a8bad0512a36dc0428b744a1fa10fbfc, type: 3}
+      propertyPath: m_TagString
+      value: ConeLight
+      objectReference: {fileID: 0}
+    - target: {fileID: 1375212448007862600, guid: a8bad0512a36dc0428b744a1fa10fbfc, type: 3}
+      propertyPath: m_TagString
+      value: Light
+      objectReference: {fileID: 0}
+    - target: {fileID: 1642870238316172707, guid: a8bad0512a36dc0428b744a1fa10fbfc, type: 3}
+      propertyPath: m_TagString
+      value: Light
+      objectReference: {fileID: 0}
+    - target: {fileID: 1975459999836335886, guid: a8bad0512a36dc0428b744a1fa10fbfc, type: 3}
+      propertyPath: m_TagString
+      value: Light
+      objectReference: {fileID: 0}
     - target: {fileID: 2558109462555473682, guid: a8bad0512a36dc0428b744a1fa10fbfc, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0
@@ -1046,16 +1091,57 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 3743129963925926485, guid: a8bad0512a36dc0428b744a1fa10fbfc, type: 3}
+      propertyPath: m_TagString
+      value: ConeLight
+      objectReference: {fileID: 0}
+    - target: {fileID: 4354757282493864658, guid: a8bad0512a36dc0428b744a1fa10fbfc, type: 3}
+      propertyPath: m_TagString
+      value: ConeLight
+      objectReference: {fileID: 0}
+    - target: {fileID: 4419359100818775622, guid: a8bad0512a36dc0428b744a1fa10fbfc, type: 3}
+      propertyPath: m_TagString
+      value: Light
+      objectReference: {fileID: 0}
     - target: {fileID: 4436639772932062042, guid: a8bad0512a36dc0428b744a1fa10fbfc, type: 3}
       propertyPath: 'm_Materials.Array.data[0]'
       value: 
       objectReference: {fileID: 2100000, guid: 623b6016bcf8946c5a7e24cd76f75ac3, type: 2}
+    - target: {fileID: 4601055528897979726, guid: a8bad0512a36dc0428b744a1fa10fbfc, type: 3}
+      propertyPath: m_TagString
+      value: ConeLight
+      objectReference: {fileID: 0}
+    - target: {fileID: 4630380945361868155, guid: a8bad0512a36dc0428b744a1fa10fbfc, type: 3}
+      propertyPath: m_TagString
+      value: ConeLight
+      objectReference: {fileID: 0}
+    - target: {fileID: 5110456418754613943, guid: a8bad0512a36dc0428b744a1fa10fbfc, type: 3}
+      propertyPath: m_TagString
+      value: ConeLight
+      objectReference: {fileID: 0}
+    - target: {fileID: 6016329222332403917, guid: a8bad0512a36dc0428b744a1fa10fbfc, type: 3}
+      propertyPath: m_TagString
+      value: Light
+      objectReference: {fileID: 0}
+    - target: {fileID: 6502166541999846192, guid: a8bad0512a36dc0428b744a1fa10fbfc, type: 3}
+      propertyPath: m_TagString
+      value: Light
+      objectReference: {fileID: 0}
+    - target: {fileID: 7864883656424866394, guid: a8bad0512a36dc0428b744a1fa10fbfc, type: 3}
+      propertyPath: m_TagString
+      value: ConeLight
+      objectReference: {fileID: 0}
     - target: {fileID: 8120476915520552407, guid: a8bad0512a36dc0428b744a1fa10fbfc, type: 3}
       propertyPath: m_Name
       value: BlockOut
       objectReference: {fileID: 0}
+    - target: {fileID: 8833634303617645027, guid: a8bad0512a36dc0428b744a1fa10fbfc, type: 3}
+      propertyPath: m_TagString
+      value: Light
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
-    m_RemovedGameObjects: []
+    m_RemovedGameObjects:
+    - {fileID: 4748881563213952172, guid: a8bad0512a36dc0428b744a1fa10fbfc, type: 3}
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: a8bad0512a36dc0428b744a1fa10fbfc, type: 3}
@@ -1225,7 +1311,7 @@ MonoBehaviour:
   m_MinValue: 0
   m_MaxValue: 1
   m_WholeNumbers: 0
-  m_Value: 0
+  m_Value: 0.1
   m_OnValueChanged:
     m_PersistentCalls:
       m_Calls: []
