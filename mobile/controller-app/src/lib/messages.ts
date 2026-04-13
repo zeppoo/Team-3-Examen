@@ -12,17 +12,19 @@ export interface LobbyInfo {
 
 
 // Sent when a drum pad is pressed or released.
-// {"type":"button","button":"button1","state":"press"}
+// {"type":"button","button":"button1","player":"<clientId>","state":"press"}
 export interface ButtonMessage {
 	type: 'button';
 	button: 'button1' | 'button2';
+	player: string;
 	state: 'press' | 'release';
 }
 
 // Sent continuously while the scratch disc is being dragged.
-// {"type":"scratch","velocity":4.5}
+// {"type":"scratch","player":"<clientId>","velocity":4.5}
 export interface ScratchMessage {
 	type: 'scratch';
+	player: string;
 	// Pixels per frame the disc moved; negative = backward, positive = forward.
 	velocity: number;
 }
@@ -51,14 +53,24 @@ export interface PlayerAssignedMessage {
 	button2Image?: string;
 }
 
-export type ServerMessage = ErrorMessage | PlayerAssignedMessage;
+// Sent by Unity when the player's score changes after a hit or miss.
+// {"type":"score_update","playerId":0,"score":350,"lastHitPoints":100,"rating":"perfect"}
+export interface ScoreUpdateMessage {
+	type: 'score_update';
+	playerId: number;
+	score: number;          // cumulative score
+	lastHitPoints: number;  // points from last hit (0 = miss)
+	rating: 'perfect' | 'good' | 'ok' | 'miss';
+}
+
+export type ServerMessage = ErrorMessage | PlayerAssignedMessage | ScoreUpdateMessage;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-export function buttonMessage(button: ButtonMessage['button'], state: ButtonMessage['state']): ButtonMessage {
-	return { type: 'button', button, state };
+export function buttonMessage(button: ButtonMessage['button'], state: ButtonMessage['state'], player: string): ButtonMessage {
+	return { type: 'button', button, player, state };
 }
 
-export function scratchMessage(velocity: number): ScratchMessage {
-	return { type: 'scratch', velocity };
+export function scratchMessage(velocity: number, player: string): ScratchMessage {
+	return { type: 'scratch', player, velocity };
 }

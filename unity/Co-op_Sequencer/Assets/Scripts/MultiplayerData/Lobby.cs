@@ -38,4 +38,14 @@ public class Lobby
     {
         return players.Find(p => p.clientId == clientId);
     }
+
+    public Player GetPlayerById(int id)
+    {
+        return players.Find(p => p.id == id);
+    }
+
+    public Player GetFirstDisconnected()
+    {
+        return players.Find(p => !p.connected);
+    }
 }
