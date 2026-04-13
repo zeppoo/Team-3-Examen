@@ -837,8 +837,8 @@
     "m_ObjectId": "0944121ab45540bc851fab6eaf9c7e95",
     "m_Title": "create gradient color effect",
     "m_Position": {
-        "x": -3876.799560546875,
-        "y": 1239.999755859375
+        "x": -3876.7998046875,
+        "y": 1240.0
     }
 }
 
@@ -1784,7 +1784,7 @@
     "m_ObjectId": "3a52b323e936485e8af02952d80a266e",
     "m_Title": "Create voronoi animation",
     "m_Position": {
-        "x": -2290.399658203125,
+        "x": -2290.400146484375,
         "y": 56.0
     }
 }
