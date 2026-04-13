@@ -1,15 +1,24 @@
-using System.Collections.Generic;
+using System;
 using UnityEngine;
-using static RoundData;
 
-[System.Serializable]
-public class SymbolData
+[Serializable]
+public enum SymbolType
 {
-    [System.Serializable]
-    [CreateAssetMenu(fileName = "SymbolType", menuName = "Scriptable Objects/SymbolType")]
-    public class SymbolSpritePair : ScriptableObject
-    {
-        public RoundData.SymbolType symbolType;
-        public Sprite sprite;
-    }
+    ScratchPad_UP,
+    ScratchPad_DOWN,
+    Keys,
+    Drums,
+    Saxophone,
+    Guitar,
+    Trumpet,
+    Microphone,
+}
+
+// Runtime instance: a symbol in the active sequence with its owning player resolved.
+[System.Serializable]
+public class SymbolInstance
+{
+    public SymbolType symbolType;
+    public int        playerId; // which player must respond to this symbol
+    public Color      color;    // player color, used for visual feedback in-game
 }

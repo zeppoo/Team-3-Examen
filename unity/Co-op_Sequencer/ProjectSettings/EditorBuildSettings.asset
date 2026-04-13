@@ -8,6 +8,12 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/QRCodeMenu.unity
     guid: 99c9720ab356a0642a771bea13969a05
+  - enabled: 1
+    path: Assets/Scenes/GameMenu.unity
+    guid: deb3adcac5e71d77d89dddc2af789648
+  - enabled: 1
+    path: Assets/Scenes/GameScene.unity
+    guid: 60ad2bbaf26b57468b652e7dbafa5c6a
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
   m_UseUCBPForAssetBundles: 0

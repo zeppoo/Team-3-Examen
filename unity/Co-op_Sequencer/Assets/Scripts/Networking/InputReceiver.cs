@@ -1,14 +1,27 @@
+using System;
 using UnityEngine;
 using CoopSequencer.Networking;
 
 /// <summary>
-/// Receives and dispatches controller input from connected phones.
+/// Translation layer between raw WebSocket messages and typed game input events.
+///
+/// Subscribe to OnButtonInput / OnScratchInput anywhere in the game to react
+/// to player input without touching networking code.
+///
 /// Attach to the same GameObject as WebSocketServer.
-/// Message schema is defined in ControllerMessages.cs and mirrored in
-/// mobile/controller-app/src/lib/messages.ts.
 /// </summary>
 public class InputReceiver : MonoBehaviour
 {
+    // ── Typed game input events ───────────────────────────────────────────
+
+    /// <summary>Fired when a player presses or releases a button.</summary>
+    public static event Action<ButtonInputEvent> OnButtonInput;
+
+    /// <summary>Fired when a player moves the scratchpad.</summary>
+    public static event Action<ScratchInputEvent> OnScratchInput;
+
+    // ─────────────────────────────────────────────────────────────────────
+
     private WebSocketServer _server;
 
     void Awake()
@@ -33,16 +46,25 @@ public class InputReceiver : MonoBehaviour
 
         switch (envelope.type)
         {
-            case "pad":
-                var pad = JsonUtility.FromJson<PadMessage>(json);
-                Debug.Log($"[Input] {clientId} pad id={pad.id} state={pad.state}");
-                OnPad(clientId, pad);
+            case "button":
+                var raw = JsonUtility.FromJson<ButtonMessage>(json);
+                var buttonEvent = new ButtonInputEvent(
+                    player:  string.IsNullOrEmpty(raw.player) ? clientId : raw.player,
+                    button:  raw.button,
+                    state:   raw.state == "press" ? ButtonState.Press : ButtonState.Release
+                );
+                Debug.Log($"[Input] {buttonEvent.player} {buttonEvent.button} {buttonEvent.state}");
+                OnButtonInput?.Invoke(buttonEvent);
                 break;
 
             case "scratch":
-                var scratch = JsonUtility.FromJson<ScratchMessage>(json);
-                Debug.Log($"[Input] {clientId} scratch velocity={scratch.velocity:F2}");
-                OnScratch(clientId, scratch);
+                var rawScratch = JsonUtility.FromJson<ScratchMessage>(json);
+                var scratchEvent = new ScratchInputEvent(
+                    player:   string.IsNullOrEmpty(rawScratch.player) ? clientId : rawScratch.player,
+                    velocity: rawScratch.velocity
+                );
+                Debug.Log($"[Input] {scratchEvent.player} scratch velocity={scratchEvent.velocity:F2}");
+                OnScratchInput?.Invoke(scratchEvent);
                 break;
 
             default:
@@ -50,8 +72,4 @@ public class InputReceiver : MonoBehaviour
                 break;
         }
     }
-
-    // Override these in a subclass or replace with UnityEvents / your game logic.
-    protected virtual void OnPad(string clientId, PadMessage msg) { }
-    protected virtual void OnScratch(string clientId, ScratchMessage msg) { }
 }

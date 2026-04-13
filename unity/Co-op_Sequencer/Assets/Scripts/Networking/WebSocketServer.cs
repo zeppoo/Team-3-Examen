@@ -31,6 +31,12 @@ public class WebSocketServer : MonoBehaviour
     public event Action<string>         OnClientConnected;
     public event Action<string>         OnClientDisconnected;
 
+    /// <summary>
+    /// Optional gate called on the background thread before a client is registered.
+    /// Return false to immediately reject the connection.
+    /// </summary>
+    public Func<bool> CanClientConnect;
+
     private TcpListener _listener;
     private CancellationTokenSource _cts;
     private readonly Dictionary<string, TcpWsClient> _clients = new();
@@ -86,6 +92,11 @@ public class WebSocketServer : MonoBehaviour
         if (_clients.TryGetValue(clientId, out var c)) c.Send(json);
     }
 
+    public void DisconnectClient(string clientId)
+    {
+        if (_clients.TryGetValue(clientId, out var c)) c.Close();
+    }
+
     // ── Accept loop ───────────────────────────────────────────────────────
 
     private async Task AcceptLoop(CancellationToken ct)
@@ -131,6 +142,13 @@ public class WebSocketServer : MonoBehaviour
                 wsClient.Close();
                 return;
             }
+        }
+
+        if (CanClientConnect != null && !CanClientConnect())
+        {
+            wsClient.Send("{\"type\":\"error\",\"reason\":\"lobby_full\"}");
+            wsClient.Close();
+            return;
         }
 
         _clients[clientId] = wsClient;
@@ -179,7 +197,14 @@ public class WebSocketServer : MonoBehaviour
 
         var request = sb.ToString();
         var keyMatch = Regex.Match(request, @"Sec-WebSocket-Key:\s*(.+)\r\n", RegexOptions.IgnoreCase);
-        if (!keyMatch.Success) return false;
+        if (!keyMatch.Success)
+        {
+            // Not a WebSocket request — respond with 200 OK so Cloudflare health checks pass
+            var httpResp = "HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\nOK";
+            var httpBytes = Encoding.UTF8.GetBytes(httpResp);
+            await stream.WriteAsync(httpBytes, 0, httpBytes.Length, ct);
+            return false;
+        }
 
         var key      = keyMatch.Groups[1].Value.Trim();
         var accept   = ComputeAccept(key);
@@ -238,9 +263,16 @@ public class WebSocketServer : MonoBehaviour
             {
                 var payload = Encoding.UTF8.GetBytes(text);
                 var frame   = BuildFrame(payload);
-                _stream.Write(frame, 0, frame.Length);
+                lock (_stream)
+                {
+                    _stream.Write(frame, 0, frame.Length);
+                    _stream.Flush();
+                }
             }
-            catch { }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"[TcpWsClient] Send failed ({text.Length} chars): {ex.Message}");
+            }
         }
 
         /// <summary>Read one WebSocket frame and return its text payload, or null on close.</summary>
