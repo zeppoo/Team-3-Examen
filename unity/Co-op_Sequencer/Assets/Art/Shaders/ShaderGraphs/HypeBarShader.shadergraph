@@ -686,7 +686,7 @@
     "m_Title": "create gradient color effect",
     "m_Position": {
         "x": -3229.60009765625,
-        "y": 600.800048828125
+        "y": 600.7999267578125
     }
 }
 
@@ -1467,7 +1467,7 @@
     "m_ObjectId": "3a52b323e936485e8af02952d80a266e",
     "m_Title": "Create voronoi animation",
     "m_Position": {
-        "x": -2290.400146484375,
+        "x": -2498.400390625,
         "y": 119.20001220703125
     }
 }
@@ -2956,17 +2956,17 @@
     "m_Type": "UnityEditor.ShaderGraph.PositionNode",
     "m_ObjectId": "a3259b2f18384145a6cd3c2f7bbb1ff3",
     "m_Group": {
-        "m_Id": ""
+        "m_Id": "3a52b323e936485e8af02952d80a266e"
     },
     "m_Name": "Position",
     "m_DrawState": {
         "m_Expanded": true,
         "m_Position": {
             "serializedVersion": "2",
-            "x": -2082.39990234375,
-            "y": -236.00001525878907,
-            "width": 207.9998779296875,
-            "height": 311.9999694824219
+            "x": -2472.80029296875,
+            "y": 180.00003051757813,
+            "width": 208.0,
+            "height": 312.0000305175781
         }
     },
     "m_Slots": [
@@ -3000,9 +3000,9 @@
         "m_Expanded": true,
         "m_Position": {
             "serializedVersion": "2",
-            "x": -1365.60009765625,
-            "y": 796.800048828125,
-            "width": 208.0,
+            "x": -1469.5999755859375,
+            "y": 668.7999877929688,
+            "width": 208.0001220703125,
             "height": 325.5999755859375
         }
     },
@@ -3436,10 +3436,10 @@
         "m_Expanded": true,
         "m_Position": {
             "serializedVersion": "2",
-            "x": -884.330322265625,
-            "y": 581.2697143554688,
-            "width": 208.0,
-            "height": 430.39996337890627
+            "x": -726.3999633789063,
+            "y": 602.3999633789063,
+            "width": 207.99993896484376,
+            "height": 430.40008544921877
         }
     },
     "m_Slots": [
@@ -3932,10 +3932,10 @@
         "m_Expanded": true,
         "m_Position": {
             "serializedVersion": "2",
-            "x": -1046.4000244140625,
-            "y": 673.60009765625,
-            "width": 124.800048828125,
-            "height": 33.5999755859375
+            "x": -943.199951171875,
+            "y": 651.9999389648438,
+            "width": 124.0,
+            "height": 33.60009765625
         }
     },
     "m_Slots": [
