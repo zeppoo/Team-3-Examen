@@ -1,6 +1,6 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
---- !u!114 &-2900637192031984680
+--- !u!114 &-6261977749874032613
 MonoBehaviour:
   m_ObjectHideFlags: 11
   m_CorrespondingSourceObject: {fileID: 0}
@@ -20,16 +20,17 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: LightIngShader 1
-  m_Shader: {fileID: -6465566751694194690, guid: d83705a17796a5e4987657cf596621d5, type: 3}
+  m_Name: HypeBarMat
+  m_Shader: {fileID: -6465566751694194690, guid: 8fcad4dd9abd3e048b02ed5aaa5e4c8d, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
-  m_ValidKeywords: []
+  m_ValidKeywords:
+  - _HYPEBARFULL
   m_InvalidKeywords: []
   m_LightmapFlags: 4
   m_EnableInstancingVariants: 0
   m_DoubleSidedGI: 0
-  m_CustomRenderQueue: 3050
+  m_CustomRenderQueue: -1
   stringTagMap: {}
   disabledShaderPasses:
   - MOTIONVECTORS
@@ -37,12 +38,8 @@ Material:
   m_SavedProperties:
     serializedVersion: 3
     m_TexEnvs:
-    - _SampleTexture2D_08491b66eeac474eb4c0e43caf3bf6b8_Texture_1_Texture2D:
-        m_Texture: {fileID: 2800000, guid: fad7e4d74d9a23d4f8591d292d5edf67, type: 3}
-        m_Scale: {x: 1, y: 1}
-        m_Offset: {x: 0, y: 0}
-    - _SampleTexture2D_59e003d12ded486681cd02c1b2704a2a_Texture_1_Texture2D:
-        m_Texture: {fileID: 2800000, guid: fad7e4d74d9a23d4f8591d292d5edf67, type: 3}
+    - _Texture:
+        m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - unity_Lightmaps:
@@ -59,13 +56,15 @@ Material:
         m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
-    - _ColorGradient: 0
-    - _Float: 0
+    - _HYPEBARFULL: 1
+    - _HypeBarFull: 0
     - _QueueControl: 0
-    - _QueueOffset: 50
-    - _edgeFallOf: 0.11
-    - _opacity: 0.05
+    - _QueueOffset: 0
+    - _RippleAmouth: 0.2
+    - _rippleSpeed: 1
     m_Colors:
-    - _Color: {r: 0, g: 0.66098547, b: 1, a: 1}
+    - _BaseColor: {r: 1, g: 1, b: 1, a: 0}
+    - _BaseColor_1: {r: 1, g: 1, b: 1, a: 1}
+    - _RippleColor: {r: 1, g: 0, b: 0.15405935, a: 0}
   m_BuildTextureStacks: []
   m_AllowLocking: 1
