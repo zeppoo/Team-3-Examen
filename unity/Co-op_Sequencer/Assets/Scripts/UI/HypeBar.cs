@@ -1,3 +1,4 @@
+using UnityEditor.SpeedTree.Importer;
 using UnityEngine;
 
 /// <summary>
@@ -9,10 +10,15 @@ public class HypeBar : MonoBehaviour
     [Header("References")]
     [SerializeField] private SymbolScroller symbolScroller;
     [SerializeField] private Renderer barRenderer;
-    [SerializeField] private Animator animator;
+    [SerializeField] private HypeBarAnimationController hypeBarAnimationController;
+    [SerializeField] private Material scrollMaterial;
 
     [Header("Shader Settings")]
     private static readonly int fillPropertyID = Shader.PropertyToID("_Fill");
+    private static readonly int fullBar = Shader.PropertyToID("_Full");
+    private static readonly int fullBarEffect = Shader.PropertyToID("_HYPEBARFULL");
+    private Material[] mats;
+    private MaterialPropertyBlock block;
 
     [Header("Settings")]
     [SerializeField] private float fillPerPerfect = 0.10f;
@@ -34,7 +40,10 @@ public class HypeBar : MonoBehaviour
     void Start()
     {
         barRenderer = GetComponent<Renderer>();
-        
+        hypeBarAnimationController = GetComponent<HypeBarAnimationController>();
+
+        mats = barRenderer.materials;
+        block = new MaterialPropertyBlock();
     }
     void OnDisable()
     {
@@ -50,6 +59,11 @@ public class HypeBar : MonoBehaviour
         // Passive drain
         value = Mathf.Max(0f, value - passiveDrain * Time.deltaTime);
         UpdateVisuals();
+
+        if(Input.GetKeyDown(KeyCode.Space))
+        {
+            HandleTimingScored(100); // Simulate a perfect hit for testing
+        }
     }
 
     private void HandleTimingScored(int points)
@@ -62,6 +76,7 @@ public class HypeBar : MonoBehaviour
         {
             float fill = fillPerPerfect * ((float)points / maxPoints);
             value = Mathf.Min(1f, value + fill);
+            hypeBarAnimationController.Hit();
         }
 
         UpdateVisuals();
@@ -75,14 +90,27 @@ public class HypeBar : MonoBehaviour
 
     private void UpdateVisuals()
     {
-        // Update shader
-        if (barRenderer != null)
+        bool isFull = value >= 0.8f;
+
+        barRenderer.GetPropertyBlock(block);
+
+        block.SetFloat(fillPropertyID, value);
+        block.SetFloat(fullBar, isFull ? 1f : 0f);
+
+        barRenderer.SetPropertyBlock(block);
+
+        if (isFull)
         {
-            var mats = barRenderer.materials;
-            mats[1].SetFloat(fillPropertyID, value);
-            barRenderer.materials = mats;
+            hypeBarAnimationController.HypeBarExplosion();
+            barRenderer.material.EnableKeyword("_HYPEBARFULL");
+        }
+        else
+        {
+            hypeBarAnimationController.ResetHypeBar();
+            barRenderer.material.DisableKeyword("_HYPEBARFULL");
         }
     }
+
 
     public float HypeLevel => value;
 }

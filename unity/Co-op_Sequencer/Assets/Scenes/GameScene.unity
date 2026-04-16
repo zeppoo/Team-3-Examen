@@ -138,7 +138,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::HypeBar
   symbolScroller: {fileID: 460350066}
   barRenderer: {fileID: 0}
-  animator: {fileID: 0}
+  hypeBarAnimationController: {fileID: 0}
+  scrollMaterial: {fileID: 0}
   fillPerPerfect: 0.1
   drainOnMiss: 0.08
   drainOnWrongInput: 0.05
@@ -149,6 +150,20 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 7550733057402304578, guid: cdbf217a17ba1294a93e960b8fc7639d, type: 3}
   m_PrefabInstance: {fileID: 1623151547}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &126456440
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 126456435}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5c462a12423fb4941a0a1495866e4a10, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::HypeBarAnimationController
+  hypeBarAnimator: {fileID: 0}
+  score: {fileID: 0}
 --- !u!1 &127574231
 GameObject:
   m_ObjectHideFlags: 0
@@ -1164,6 +1179,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 7170371730684453624, guid: cdbf217a17ba1294a93e960b8fc7639d, type: 3}
       insertIndex: -1
       addedObject: {fileID: 126456436}
+    - targetCorrespondingSourceObject: {fileID: 7170371730684453624, guid: cdbf217a17ba1294a93e960b8fc7639d, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 126456440}
   m_SourcePrefab: {fileID: 100100000, guid: cdbf217a17ba1294a93e960b8fc7639d, type: 3}
 --- !u!1 &1852754425
 GameObject:

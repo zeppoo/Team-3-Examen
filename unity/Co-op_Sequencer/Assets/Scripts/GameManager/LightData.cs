@@ -54,11 +54,6 @@ public class LightData : MonoBehaviour
             r.material.SetFloat(transperencyOverlay, overlay);
             r.material.SetFloat(gradientOverlay, gradientOverlays);
 
-            // If gradient overlay is too low, force it toward zero over time
-            if (gradientOverlays < 0.8f)
-            {
-                r.material.SetFloat(gradientOverlay, 0 * Time.deltaTime);
-            }
         }
 
         // Apply settings to volume lights

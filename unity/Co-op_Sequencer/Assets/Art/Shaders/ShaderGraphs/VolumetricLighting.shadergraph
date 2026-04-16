@@ -4421,7 +4421,7 @@
     "m_Title": "Create fresnel",
     "m_Position": {
         "x": -2973.333251953125,
-        "y": 764.6666259765625
+        "y": 764.6666870117188
     }
 }
 
@@ -5413,7 +5413,7 @@
     "m_Title": "Create Scrolling fog Texture",
     "m_Position": {
         "x": -1794.6666259765625,
-        "y": 780.0001220703125
+        "y": 780.0000610351563
     }
 }
 
@@ -6115,7 +6115,7 @@
     "m_Title": "Alter transperenty bases on camare distance",
     "m_Position": {
         "x": -2883.333251953125,
-        "y": -84.0
+        "y": -83.99996948242188
     }
 }
 

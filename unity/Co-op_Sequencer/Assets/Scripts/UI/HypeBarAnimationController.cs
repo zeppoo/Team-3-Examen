@@ -3,15 +3,18 @@ using UnityEngine;
 public class HypeBarAnimationController : MonoBehaviour
 {
     [SerializeField] private Animator hypeBarAnimator;
+    [SerializeField] private HypeBar score;
 
     private void Start()
     {
         hypeBarAnimator = GetComponent<Animator>();
+        score = GetComponent<HypeBar>();
     }
+
 
     public void Hit()
     {
-        hypeBarAnimator.SetTrigger("Hit");
+        hypeBarAnimator.SetTrigger("hit");
     }
 
     public void HypeBarExplosion()
@@ -22,6 +25,10 @@ public class HypeBarAnimationController : MonoBehaviour
 
     public void ResetHypeBar()
     {
+        hypeBarAnimator.ResetTrigger("explode");
         hypeBarAnimator.SetBool("hype", false);
+        
     }
+
+  
 }
