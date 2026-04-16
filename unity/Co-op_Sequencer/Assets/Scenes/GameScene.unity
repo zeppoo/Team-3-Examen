@@ -350,6 +350,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::WorldStateManager
   hypeBar: {fileID: 0}
+  hypeBarScript: {fileID: 0}
 --- !u!114 &135771397
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1240,43 +1241,47 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4868932301886831555, guid: d5bade76d605a9043a80d273692bd447, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 0
+      value: 21.503424
       objectReference: {fileID: 0}
     - target: {fileID: 4868932301886831555, guid: d5bade76d605a9043a80d273692bd447, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 0
+      value: 19.058481
       objectReference: {fileID: 0}
     - target: {fileID: 4868932301886831555, guid: d5bade76d605a9043a80d273692bd447, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 0
+      value: 2.3861747
       objectReference: {fileID: 0}
     - target: {fileID: 4868932301886831555, guid: d5bade76d605a9043a80d273692bd447, type: 3}
       propertyPath: m_LocalRotation.w
-      value: 1
+      value: -0.14046635
       objectReference: {fileID: 0}
     - target: {fileID: 4868932301886831555, guid: d5bade76d605a9043a80d273692bd447, type: 3}
       propertyPath: m_LocalRotation.x
-      value: 0
+      value: 0.26992643
       objectReference: {fileID: 0}
     - target: {fileID: 4868932301886831555, guid: d5bade76d605a9043a80d273692bd447, type: 3}
       propertyPath: m_LocalRotation.y
-      value: 0
+      value: -0.95174676
       objectReference: {fileID: 0}
     - target: {fileID: 4868932301886831555, guid: d5bade76d605a9043a80d273692bd447, type: 3}
       propertyPath: m_LocalRotation.z
-      value: 0
+      value: -0.03983783
       objectReference: {fileID: 0}
     - target: {fileID: 4868932301886831555, guid: d5bade76d605a9043a80d273692bd447, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
-      value: 0
+      value: -8.723
       objectReference: {fileID: 0}
     - target: {fileID: 4868932301886831555, guid: d5bade76d605a9043a80d273692bd447, type: 3}
       propertyPath: m_LocalEulerAnglesHint.y
-      value: 0
+      value: -194.403
       objectReference: {fileID: 0}
     - target: {fileID: 4868932301886831555, guid: d5bade76d605a9043a80d273692bd447, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
-      value: 0
+      value: -30.564
+      objectReference: {fileID: 0}
+    - target: {fileID: 5040044386558607929, guid: d5bade76d605a9043a80d273692bd447, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 8.26
       objectReference: {fileID: 0}
     - target: {fileID: 5911743619358925147, guid: d5bade76d605a9043a80d273692bd447, type: 3}
       propertyPath: symbolScroller
@@ -1361,7 +1366,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4033389935097518566, guid: 1842a8e97cfd601498c697611ee67177, type: 3}
       propertyPath: m_AnchoredPosition.x
-      value: -894
+      value: -882
       objectReference: {fileID: 0}
     - target: {fileID: 4033389935097518566, guid: 1842a8e97cfd601498c697611ee67177, type: 3}
       propertyPath: m_AnchoredPosition.y
