@@ -1230,6 +1230,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 504338425558077658, guid: d5bade76d605a9043a80d273692bd447, type: 3}
+      propertyPath: m_TagString
+      value: HypeBar
+      objectReference: {fileID: 0}
     - target: {fileID: 1603581125465462610, guid: d5bade76d605a9043a80d273692bd447, type: 3}
       propertyPath: m_Name
       value: HypeBarRoot

@@ -2,15 +2,12 @@ using UnityEngine;
 
 public class LightData : MonoBehaviour
 {
-    // Arrays holding all volume and cone light objects in the scene
     [SerializeField] internal GameObject[] volLights;
     [SerializeField] internal GameObject[] coneLights;
 
-    // Cached renderer references for performance (avoid repeated GetComponent calls)
     private Renderer[] volRenderers;
     private Renderer[] coneRenderers;
 
-    // Shader property IDs (faster than using string property names every frame)
     private static readonly int strengthID = Shader.PropertyToID("_Strengt");
     private static readonly int colorGradientID = Shader.PropertyToID("_ColorGradient");
     private static readonly int opacityID = Shader.PropertyToID("_opacity");
@@ -19,56 +16,44 @@ public class LightData : MonoBehaviour
 
     void Start()
     {
-        // Find all light objects by tag at scene start
         volLights = GameObject.FindGameObjectsWithTag("Light");
         coneLights = GameObject.FindGameObjectsWithTag("ConeLight");
 
-        // Initialize renderer arrays to match object arrays
         volRenderers = new Renderer[volLights.Length];
         coneRenderers = new Renderer[coneLights.Length];
 
-        // Cache Renderer components for volume lights
         for (int i = 0; i < volLights.Length; i++)
             volRenderers[i] = volLights[i].GetComponent<Renderer>();
 
-        // Cache Renderer components for cone lights
         for (int i = 0; i < coneLights.Length; i++)
             coneRenderers[i] = coneLights[i].GetComponent<Renderer>();
     }
 
-    // Applies runtime shader parameter values to all lights
     public void ApplyValues(float strength, float transparency, float gradient, float overlay, float gradientOverlays)
     {
-        // Apply settings to cone lights
+        // Clamp once for all parameters to ensure they stay within expected ranges
+        strength = Mathf.Clamp(strength, 0.0032f, 0.02f);
+        transparency = Mathf.Clamp(transparency, 0.1f, 0.5f);
+
         foreach (var r in coneRenderers)
         {
-            if (r == null) continue;
+            if (r == null || r.materials.Length == 0) continue;
 
-            // Set light strength on material shader
-            r.material.SetFloat(strengthID, strength);
+            Material mat = r.materials[0];
 
-            // Clamp strength to avoid extreme values
-            strength = Mathf.Clamp(strength, 0.0032f, 0.02f);
-
-            // Apply overlay intensity values
-            r.material.SetFloat(transperencyOverlay, overlay);
-            r.material.SetFloat(gradientOverlay, gradientOverlays);
-
+            mat.SetFloat(strengthID, strength);
+            mat.SetFloat(transperencyOverlay, overlay);
+            mat.SetFloat(gradientOverlay, gradientOverlays);
         }
 
-        // Apply settings to volume lights
         foreach (var r in volRenderers)
         {
-            if (r == null) continue;
+            if (r == null || r.materials.Length == 0) continue;
 
-            // Update shader gradient value
-            r.material.SetFloat(colorGradientID, gradient);
+            Material mat = r.materials[0];
 
-            // Update transparency/opacity
-            r.material.SetFloat(opacityID, transparency);
-
-            // Clamp transparency to keep visuals stable
-            transparency = Mathf.Clamp(transparency, 0.1f, 0.5f);
+            mat.SetFloat(colorGradientID, gradient);
+            mat.SetFloat(opacityID, transparency);
         }
     }
 }

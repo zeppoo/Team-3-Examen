@@ -5,17 +5,17 @@ public class WorldStateManager : MonoBehaviour
 {
     // UI reference that holds a slider (used as a "hype" or score bar)
     [SerializeField] private GameObject hypeBar;
+    [SerializeField] private HypeBar hypeBarScript;
 
     // Reference to LightData script that controls lighting visuals
     private LightData lightData;
+   
 
-    // Slider component extracted from hypeBar
-    private Slider score;
 
     private void Start()
     {
-       
-        score = hypeBar.GetComponent<Slider>();
+        hypeBar = GameObject.FindGameObjectWithTag("HypeBar");
+        hypeBarScript = hypeBar.GetComponent<HypeBar>();
         lightData = GetComponent<LightData>();
     }
 
@@ -26,9 +26,7 @@ public class WorldStateManager : MonoBehaviour
     }
     void ApplyScore()
     {
-        float value = score.value;
-
-        // Pass same value into all lighting parameters for now
-        lightData.ApplyValues(value, value, value, value, value);
+        float score = hypeBarScript.value;    
+        lightData.ApplyValues(score, score, score, score, score);
     }
 }

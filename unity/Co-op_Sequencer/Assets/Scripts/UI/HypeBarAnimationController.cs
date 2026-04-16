@@ -3,12 +3,10 @@ using UnityEngine;
 public class HypeBarAnimationController : MonoBehaviour
 {
     [SerializeField] private Animator hypeBarAnimator;
-    [SerializeField] private HypeBar score;
 
     private void Start()
     {
         hypeBarAnimator = GetComponent<Animator>();
-        score = GetComponent<HypeBar>();
     }
 
 

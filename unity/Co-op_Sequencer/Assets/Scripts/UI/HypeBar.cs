@@ -27,7 +27,7 @@ public class HypeBar : MonoBehaviour
     [SerializeField] private float passiveDrain = 0.01f;
     [SerializeField] private int maxPoints = 100;
 
-    private float value = 0.5f; // 0–1
+    public float value = 0.5f; // 0–1
 
     void OnEnable()
     {
@@ -59,11 +59,6 @@ public class HypeBar : MonoBehaviour
         // Passive drain
         value = Mathf.Max(0f, value - passiveDrain * Time.deltaTime);
         UpdateVisuals();
-
-        if(Input.GetKeyDown(KeyCode.Space))
-        {
-            HandleTimingScored(100); // Simulate a perfect hit for testing
-        }
     }
 
     private void HandleTimingScored(int points)
