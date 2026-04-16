@@ -1,7 +1,8 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { ws } from '$lib/websocket.svelte';
-	import { buttonMessage, scratchMessage } from '$lib/messages';
+	import { scratchMessage, sliderMessage } from '$lib/messages';
+	import { settings } from '$lib/settings.svelte';
 	import { onMount, onDestroy } from 'svelte';
 
 	onMount(() => {
@@ -12,7 +13,6 @@
 		(screen.orientation as any).unlock?.();
 	});
 
-	// Derive a slightly lighter version of the player color for the glow effect.
 	function withAlpha(hex: string, lighten = 40): string {
 		const n = parseInt(hex.replace('#', ''), 16);
 		const r = Math.min(255, (n >> 16) + lighten);
@@ -24,36 +24,15 @@
 	const padColor = $derived(ws.playerColor ?? '#444455');
 	const padGlow  = $derived(withAlpha(padColor));
 
-	const pads = [
-		{ id: 'button1', label: '1' },
-		{ id: 'button2', label: '2' }
-	] as const;
+	// ── Settings panel ──
+	let settingsOpen = $state(false);
 
-	let pressed = $state<Record<string, boolean>>({});
-	const padPointers: Record<string, number> = {};
-
-	// Scratchpad state
+	// ── Scratchpad state ──
 	let scratchActive = $state(false);
 	let lastY = $state(0);
 	let velocity = $state(0);
 	let rotation = $state(0);
 	let animFrame: number;
-
-	function press(id: 'button1' | 'button2', e: PointerEvent) {
-		if (id in padPointers) return; // already held by another pointer
-		padPointers[id] = e.pointerId;
-		(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-		pressed[id] = true;
-		navigator.vibrate?.(50);
-		ws.send(buttonMessage(id, 'press', ws.playerId ?? ''));
-	}
-
-	function release(id: 'button1' | 'button2', e: PointerEvent) {
-		if (padPointers[id] !== e.pointerId) return; // not the owning pointer
-		delete padPointers[id];
-		pressed[id] = false;
-		ws.send(buttonMessage(id, 'release', ws.playerId ?? ''));
-	}
 
 	function scratchStart(e: PointerEvent) {
 		scratchActive = true;
@@ -70,7 +49,8 @@
 		rotation += velocity;
 		ws.send(scratchMessage(velocity, ws.playerId ?? ''));
 
-		const intensity = Math.min(Math.round(Math.abs(velocity) * 6), 80);
+		const rumbleScale = settings.rumble / 100;
+		const intensity = Math.min(Math.round(Math.abs(velocity) * 6 * rumbleScale), 80);
 		if (intensity > 2) navigator.vibrate?.(intensity);
 	}
 
@@ -81,10 +61,57 @@
 
 	function decelerate() {
 		if (Math.abs(velocity) < 0.2) { velocity = 0; return; }
-		velocity *= 0.88;
+		velocity *= 0.96;
 		rotation += velocity;
 		animFrame = requestAnimationFrame(decelerate);
 	}
+
+	// ── DJ Slider state ──
+	let sliderActive = $state(false);
+	let sliderStartY = $state(0);
+	const SWIPE_THRESHOLD = 40;
+	let sliderOffset = $state(0);
+	let sliderZoneEl: HTMLElement | null = $state(null);
+	let sliderTrackX = $state(0);
+	let sliderTrackY = $state(0);
+
+	function sliderStart(e: PointerEvent) {
+		sliderActive = true;
+		sliderStartY = e.clientY;
+		sliderOffset = 0;
+		(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+
+		// Move the slider track so it's centered on where the player touched
+		if (sliderZoneEl) {
+			const rect = sliderZoneEl.getBoundingClientRect();
+			sliderTrackX = e.clientX - (rect.left + rect.width / 2);
+			sliderTrackY = e.clientY - (rect.top + rect.height / 2);
+		}
+
+		const rumbleScale = settings.rumble / 100;
+		if (rumbleScale > 0) navigator.vibrate?.(Math.round(15 * rumbleScale));
+	}
+
+	function sliderMove(e: PointerEvent) {
+		if (!sliderActive) return;
+		sliderOffset = e.clientY - sliderStartY;
+	}
+
+	function sliderEnd() {
+		if (!sliderActive) return;
+		sliderActive = false;
+
+		if (Math.abs(sliderOffset) >= SWIPE_THRESHOLD) {
+			const direction = sliderOffset < 0 ? 'up' : 'down';
+			ws.send(sliderMessage(direction, ws.playerId ?? ''));
+			const rumbleScale = settings.rumble / 100;
+			if (rumbleScale > 0) navigator.vibrate?.(Math.round(80 * rumbleScale));
+		}
+
+		sliderOffset = 0;
+	}
+
+	const lanes = $derived(Array.from({ length: ws.totalLanes }, (_, i) => i));
 
 	function disconnect() {
 		ws.disconnect();
@@ -100,7 +127,6 @@
 
 <svelte:head>
 	<style>
-		/* Force landscape and prevent scroll/bounce */
 		html, body {
 			overflow: hidden;
 			touch-action: none;
@@ -108,49 +134,9 @@
 	</style>
 </svelte:head>
 
-<!-- Lock landscape via CSS (works when screen orientation API isn't available) -->
-<div class="root">
+<div class="root" class:flipped={settings.flipped}>
 
-	<!-- Left: 2 drum pads stacked -->
-	<div class="pads">
-		{#each pads as pad}
-			{@const img = pad.id === 'button1' ? ws.button1Image : ws.button2Image}
-			<button
-				class="pad"
-				class:pad-pressed={pressed[pad.id]}
-				style="--color: {padColor}; --glow: {padGlow};"
-				onpointerdown={(e) => press(pad.id, e)}
-				onpointerup={(e) => release(pad.id, e)}
-				onpointercancel={(e) => release(pad.id, e)}
-			>
-				{#if img}
-					<img class="pad-symbol" src={img} alt={pad.label} />
-				{:else}
-					<span class="pad-label">{pad.label}</span>
-				{/if}
-			</button>
-		{/each}
-	</div>
-
-	<!-- Middle: digital screen -->
-	<div class="screen">
-		<div class="screen-inner" style="--sc: {padColor}; --sc-glow: {padGlow};">
-			<div class="screen-row">
-				<span class="screen-label">PLAYER</span>
-				<span class="screen-value">01</span>
-			</div>
-			<div class="screen-divider"></div>
-			<div class="screen-row">
-				<span class="screen-label">SCORE</span>
-				<span class="screen-value">{String(ws.score).padStart(4, '0')}</span>
-			</div>
-			{#if ws.lastRating}
-				<div class="screen-rating {ws.lastRating}">{ws.lastRating.toUpperCase()}</div>
-			{/if}
-		</div>
-	</div>
-
-	<!-- Right: half DJ scratchpad -->
+	<!-- Scratchpad -->
 	<div class="scratch-area">
 		<div
 			class="vinyl-wrapper"
@@ -161,26 +147,155 @@
 			role="slider"
 			aria-label="Scratch pad"
 			aria-valuenow={rotation}
+			tabindex="0"
 		>
-			<!-- Vinyl disc, clipped to left half -->
 			<div class="vinyl-clip">
-				<div class="vinyl" style="transform: rotate({rotation}deg);">
-					<!-- Grooves -->
+				<div class="vinyl" style="transform: rotate({rotation}deg); --color: {padColor}; --glow: {padGlow};">
 					{#each [0.72, 0.58, 0.44, 0.30] as r}
 						<div class="groove" style="width: {r * 100}%; height: {r * 100}%; border-radius: 50%;"></div>
 					{/each}
-					<!-- Label in center -->
-					<div class="vinyl-label">
+					<div class="vinyl-label" style="--color: {padColor};">
 						<span>SCRATCH</span>
 					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<!-- Middle: screen -->
+	<div class="screen">
+		<div class="screen-inner" style="--sc: {padColor}; --sc-glow: {padGlow};">
+			<div class="screen-row">
+				<span class="screen-label">PLAYER</span>
+				<span class="screen-value">{String(ws.playerId ?? '0').padStart(2, '0')}</span>
+			</div>
+			<div class="screen-divider"></div>
+			<div class="screen-row">
+				<span class="screen-label">SCORE</span>
+				<span class="screen-value">{String(ws.score).padStart(4, '0')}</span>
+			</div>
+			{#if ws.lastRating}
+				<div class="screen-rating {ws.lastRating}">{ws.lastRating.toUpperCase()}</div>
+			{/if}
+			<div class="screen-divider"></div>
+			<div class="lane-indicator">
+				<span class="screen-label">LANE</span>
+				<div class="lane-dots">
+					{#each lanes as i}
+						<div
+							class="lane-dot"
+							class:lane-dot-active={i === ws.lane}
+							style="--color: {padColor}; --glow: {padGlow};"
+						></div>
+					{/each}
+				</div>
+			</div>
+			<button class="settings-btn" style="--sc: {padColor};" onclick={() => { settings.beginEdit(); settingsOpen = true; }}>
+				&#9881; SETTINGS
+			</button>
+		</div>
+	</div>
+
+	<!-- DJ Slider -->
+	<div
+		class="slider-area"
+		bind:this={sliderZoneEl}
+		onpointerdown={sliderStart}
+		onpointermove={sliderMove}
+		onpointerup={sliderEnd}
+		onpointercancel={sliderEnd}
+		role="slider"
+		aria-label="Lane switch slider"
+		aria-valuenow={ws.lane}
+		tabindex="0"
+	>
+		<div class="slider-track" style="transform: translate({sliderTrackX}px, {sliderTrackY}px); --color: {padColor}; --glow: {padGlow};">
+			<div class="slider-label slider-label-top">UP</div>
+			<div
+				class="slider-knob"
+				class:slider-knob-active={sliderActive}
+				style="transform: translateY({Math.max(-120, Math.min(120, sliderOffset))}px); --color: {padColor}; --glow: {padGlow};"
+			>
+				<div class="slider-grip"></div>
+				<div class="slider-grip"></div>
+				<div class="slider-grip"></div>
+			</div>
+			<div class="slider-label slider-label-bottom">DOWN</div>
+		</div>
+	</div>
+
+	<!-- Settings panel (slides down) -->
+	<div class="settings-overlay" class:settings-open={settingsOpen}>
+		<div class="settings-panel" style="--sc: {padColor}; --sc-glow: {padGlow};">
+			<div class="settings-left">
+				<div class="settings-header">
+					<span class="settings-title">SETTINGS</span>
+				</div>
+
+				<div class="settings-faders">
+					<!-- Volume fader -->
+					<div class="fader-group">
+						<span class="fader-value">{settings.volume}</span>
+						<div class="fader-track-v">
+							<input
+								type="range"
+								min="0"
+								max="100"
+								value={settings.volume}
+								oninput={(e) => settings.volume = Number((e.target as HTMLInputElement).value)}
+								class="fader-input-v"
+								style="--sc: {padColor}; --sc-glow: {padGlow};"
+							/>
+						</div>
+						<span class="fader-label">VOLUME</span>
 					</div>
+
+					<!-- Rumble fader -->
+					<div class="fader-group">
+						<span class="fader-value">{settings.rumble}</span>
+						<div class="fader-track-v">
+							<input
+								type="range"
+								min="0"
+								max="100"
+								value={settings.rumble}
+								oninput={(e) => settings.rumble = Number((e.target as HTMLInputElement).value)}
+								class="fader-input-v"
+								style="--sc: {padColor}; --sc-glow: {padGlow};"
+							/>
+						</div>
+						<span class="fader-label">RUMBLE</span>
+					</div>
+
+					<!-- Layout toggle -->
+					<div class="fader-group">
+						<button
+							class="toggle-btn"
+							class:toggle-active={settings.flipped}
+							style="--sc: {padColor};"
+							onclick={() => settings.flipped = !settings.flipped}
+						>
+							{settings.flipped ? 'SLIDER | SCRATCH' : 'SCRATCH | SLIDER'}
+						</button>
+						<span class="fader-label">LAYOUT</span>
+					</div>
+				</div>
 			</div>
+
+			<div class="settings-actions">
+				<button class="action-btn save-btn" style="--sc: {padColor};" onclick={() => { settings.save(); settingsOpen = false; }}>
+					SAVE
+				</button>
+				<button class="action-btn cancel-btn" style="--sc: {padColor};" onclick={() => { settings.cancel(); settingsOpen = false; }}>
+					CANCEL
+				</button>
 			</div>
+		</div>
 	</div>
 
 	<!-- Error overlay -->
 	{#if ws.lastError}
-		<div class="error-overlay">
+		<div class="error-overlay-err">
 			<div class="error-box">
 				<span class="error-icon">⚠</span>
 				<p class="error-title">
@@ -192,7 +307,7 @@
 		</div>
 	{/if}
 
-	<!-- Status bar overlay (top-left) -->
+	<!-- Status bar -->
 	<div class="statusbar">
 		<div class="dot" style="background: {statusColor};"></div>
 		<span>{ws.status}</span>
@@ -215,91 +330,99 @@
 		user-select: none;
 	}
 
-	/* ── Drum pads ── */
-	.pads {
-		display: flex;
-		flex-direction: column;
-		gap: 12px;
-		padding: 16px;
-		width: 38%;
-		height: 100%;
-		box-sizing: border-box;
+	/* Flipped layout: reverse the order */
+	.root.flipped {
+		flex-direction: row-reverse;
 	}
 
-	.pad {
+	/* ── Scratch area ── */
+	.scratch-area {
 		flex: 1;
-		border-radius: 18px;
-		border: none;
-		cursor: pointer;
-		position: relative;
-		overflow: hidden;
-		touch-action: none;
 		display: flex;
 		align-items: center;
-		justify-content: center;
-
-		background:
-			radial-gradient(ellipse at 30% 25%, color-mix(in srgb, var(--color) 70%, white 30%) 0%, var(--color) 55%, color-mix(in srgb, var(--color) 60%, black 40%) 100%);
-
-		box-shadow:
-			inset 0 3px 6px rgba(255,255,255,0.15),
-			inset 0 -4px 8px rgba(0,0,0,0.5),
-			0 0 18px color-mix(in srgb, var(--glow) 30%, transparent),
-			0 6px 20px rgba(0,0,0,0.6);
-
-		transition: transform 80ms ease, box-shadow 80ms ease;
+		justify-content: flex-start;
+		padding: 12px 0 12px 0;
+		overflow: hidden;
 	}
 
-	.pad::before {
-		/* top sheen */
-		content: '';
+	.flipped .scratch-area {
+		justify-content: flex-end;
+	}
+
+	.vinyl-wrapper {
+		position: relative;
+		height: 100%;
+		aspect-ratio: 1;
+		transform: translateX(-50%);
+		cursor: grab;
+	}
+
+	.flipped .vinyl-wrapper {
+		transform: translateX(50%);
+	}
+
+	.vinyl-wrapper:active { cursor: grabbing; }
+
+	.vinyl-clip {
 		position: absolute;
 		inset: 0;
-		border-radius: inherit;
-		background: linear-gradient(160deg, rgba(255,255,255,0.18) 0%, transparent 50%);
-		pointer-events: none;
+		overflow: hidden;
 	}
 
-	.pad-pressed {
-		transform: scale(0.95) translateY(3px);
-		box-shadow:
-			inset 0 6px 14px rgba(0,0,0,0.6),
-			inset 0 -2px 4px rgba(255,255,255,0.05),
-			0 0 28px var(--glow),
-			0 2px 6px rgba(0,0,0,0.4);
-	}
-
-	.pad-symbol {
-		width: 55%;
-		height: 55%;
-		object-fit: contain;
-		pointer-events: none;
-		opacity: 0.9;
-		filter: drop-shadow(0 0 6px var(--glow));
-	}
-
-	.pad-label {
+	.vinyl {
 		position: absolute;
-		bottom: 12px;
-		right: 16px;
-		font-size: 2rem;
-		font-weight: 900;
-		color: rgba(255,255,255,0.25);
-		font-family: monospace;
-		letter-spacing: -1px;
+		inset: 0;
+		border-radius: 50%;
+		background: radial-gradient(circle at center, #2a2a2a 0%, #111 60%, #050505 100%);
+		box-shadow:
+			0 0 0 3px #333,
+			0 0 40px rgba(0,0,0,0.8);
+	}
+
+	.groove {
+		position: absolute;
+		top: 50%;
+		left: 50%;
+		transform: translate(-50%, -50%);
+		border: 1px solid rgba(255,255,255,0.06);
 		pointer-events: none;
 	}
 
-	/* ── Screen ── */
-	.screen {
-		flex: 1;
+	.vinyl-label {
+		position: absolute;
+		top: 50%;
+		left: 50%;
+		transform: translate(-50%, -50%);
+		width: 28%;
+		height: 28%;
+		border-radius: 50%;
+		background: radial-gradient(circle, #1a1a2e, #0d0d1a);
+		border: 2px solid #333;
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		padding: 20px 8px;
+	}
+
+	.vinyl-label span {
+		font-size: 0.45rem;
+		font-weight: 700;
+		letter-spacing: 0.15em;
+		color: rgba(255,255,255,0.4);
+		text-transform: uppercase;
+	}
+
+	/* ── Screen (always centered) ── */
+	.screen {
+		position: absolute;
+		left: 50%;
+		top: 50%;
+		transform: translate(-50%, -50%);
+		z-index: 10;
+		pointer-events: none;
 	}
 
 	.screen-inner {
+		pointer-events: all;
 		background: #020c04;
 		border: 2px solid color-mix(in srgb, var(--sc) 40%, black 60%);
 		border-radius: 12px;
@@ -311,7 +434,6 @@
 		box-shadow:
 			0 0 12px color-mix(in srgb, var(--sc) 15%, transparent),
 			inset 0 0 20px rgba(0, 0, 0, 0.8);
-		/* Scanline overlay */
 		background-image: repeating-linear-gradient(
 			0deg,
 			transparent,
@@ -373,77 +495,355 @@
 		100% { opacity: 0.7; transform: scale(1); }
 	}
 
-	/* ── Scratch area ── */
-	.scratch-area {
-		flex: 1;
+	/* ── Lane indicator ── */
+	.lane-indicator {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 6px;
+	}
+
+	.lane-dots {
+		display: flex;
+		gap: 6px;
+	}
+
+	.lane-dot {
+		width: 10px;
+		height: 10px;
+		border-radius: 50%;
+		background: #1a1a2a;
+		border: 1px solid #333;
+		transition: all 0.2s ease;
+	}
+
+	.lane-dot-active {
+		background: var(--color);
+		border-color: var(--glow);
+		box-shadow: 0 0 8px var(--glow), 0 0 16px color-mix(in srgb, var(--glow) 40%, transparent);
+	}
+
+	/* ── Settings button ── */
+	.settings-btn {
+		margin-top: 8px;
+		padding: 8px 16px;
+		border-radius: 8px;
+		background: #1a1a2a;
+		border: 1px solid color-mix(in srgb, var(--sc) 30%, transparent);
+		color: color-mix(in srgb, var(--sc) 60%, #9ca3af);
+		font-family: monospace;
+		font-size: 0.65rem;
+		font-weight: 700;
+		letter-spacing: 0.15em;
+		cursor: pointer;
+		text-transform: uppercase;
+		transition: background 0.15s ease;
+	}
+
+	.settings-btn:active {
+		background: color-mix(in srgb, var(--sc) 15%, #1a1a2a);
+	}
+
+	/* ── DJ Slider ── */
+	.slider-area {
 		display: flex;
 		align-items: center;
-		justify-content: flex-end;
-		padding: 12px 0 12px 0;
-		overflow: hidden;
+		justify-content: center;
+		padding: 6px 8px;
+		width: 160px;
+		touch-action: none;
+		cursor: pointer;
 	}
 
-	.vinyl-wrapper {
+	.slider-track {
 		position: relative;
-		/* Size: full height of container */
+		width: 14px;
 		height: 100%;
-		aspect-ratio: 1;
-		/* Shift disc so only left half is visible, bleeding off right edge */
-		transform: translateX(50%);
-		cursor: grab;
-	}
-
-	.vinyl-wrapper:active { cursor: grabbing; }
-
-	.vinyl-clip {
-		position: absolute;
-		inset: 0;
-		overflow: hidden;
-	}
-
-	.vinyl {
-		position: absolute;
-		inset: 0;
-		border-radius: 50%;
-		background: radial-gradient(circle at center, #2a2a2a 0%, #111 60%, #050505 100%);
+		background: #0a0a10;
+		border-radius: 7px;
+		border: 1px solid #222;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
 		box-shadow:
-			0 0 0 3px #333,
-			0 0 40px rgba(0,0,0,0.8);
+			inset 0 2px 8px rgba(0,0,0,0.8),
+			inset 0 0 4px rgba(0,0,0,0.6);
 	}
 
-	.groove {
+	.slider-track::before {
+		content: '';
 		position: absolute;
-		top: 50%;
+		top: 15%;
+		bottom: 15%;
 		left: 50%;
-		transform: translate(-50%, -50%);
-		border: 1px solid rgba(255,255,255,0.06);
+		width: 2px;
+		transform: translateX(-50%);
+		background: repeating-linear-gradient(
+			180deg,
+			rgba(255,255,255,0.08) 0px,
+			rgba(255,255,255,0.08) 1px,
+			transparent 1px,
+			transparent 8px
+		);
 		pointer-events: none;
 	}
 
-	.vinyl-label {
+	.slider-label {
+		font-family: monospace;
+		font-size: 0.4rem;
+		font-weight: 700;
+		letter-spacing: 0.1em;
+		color: rgba(255,255,255,0.15);
+		text-transform: uppercase;
 		position: absolute;
-		top: 50%;
-		left: 50%;
-		transform: translate(-50%, -50%);
-		width: 28%;
-		height: 28%;
-		border-radius: 50%;
-		background: radial-gradient(circle, #1a1a2e, #0d0d1a);
-		border: 2px solid #333;
+	}
+
+	.slider-label-top { top: 6px; }
+	.slider-label-bottom { bottom: 6px; }
+
+	.slider-knob {
+		width: 70px;
+		height: 90px;
+		border-radius: 6px;
+		background:
+			linear-gradient(180deg,
+				color-mix(in srgb, var(--color) 50%, #444) 0%,
+				color-mix(in srgb, var(--color) 40%, #222) 40%,
+				color-mix(in srgb, var(--color) 30%, #111) 100%
+			);
+		border: 1px solid color-mix(in srgb, var(--color) 30%, #555);
+		box-shadow:
+			inset 0 1px 2px rgba(255,255,255,0.12),
+			inset 0 -2px 4px rgba(0,0,0,0.5),
+			0 2px 8px rgba(0,0,0,0.6),
+			0 0 10px color-mix(in srgb, var(--glow) 15%, transparent);
+		pointer-events: none;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		gap: 4px;
+		transition: box-shadow 0.15s ease, transform 0.05s ease-out;
+	}
+
+	.slider-knob-active {
+		box-shadow:
+			inset 0 1px 2px rgba(255,255,255,0.12),
+			inset 0 -2px 4px rgba(0,0,0,0.5),
+			0 2px 8px rgba(0,0,0,0.6),
+			0 0 18px var(--glow);
+	}
+
+	.slider-grip {
+		width: 34px;
+		height: 2px;
+		background: rgba(255,255,255,0.15);
+		border-radius: 1px;
+	}
+
+	/* ── Settings overlay (slides down) ── */
+	.settings-overlay {
+		position: absolute;
+		inset: 0;
+		z-index: 50;
+		overflow: hidden;
+		pointer-events: none;
+	}
+
+	.settings-panel {
+		width: 100%;
+		height: 100%;
+		background: #0a0a0f;
+		display: flex;
+		flex-direction: row;
+		box-shadow: 0 8px 32px rgba(0,0,0,0.8);
+		transform: translateY(-100%);
+		transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+		pointer-events: none;
+	}
+
+	.settings-open .settings-panel {
+		transform: translateY(0);
+		pointer-events: all;
+	}
+
+	.settings-left {
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+		padding: 12px 32px;
+		gap: 8px;
+	}
+
+	.settings-header {
+		display: flex;
+		align-items: center;
+	}
+
+	.settings-title {
+		font-family: monospace;
+		font-size: 1rem;
+		font-weight: 700;
+		letter-spacing: 0.2em;
+		color: color-mix(in srgb, var(--sc) 60%, #9ca3af);
+		text-transform: uppercase;
+	}
+
+	/* ── Faders (vertical) ── */
+	.settings-faders {
+		flex: 1;
+		display: flex;
+		flex-direction: row;
+		align-items: center;
+		justify-content: center;
+		gap: 48px;
+	}
+
+	.fader-group {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 10px;
+	}
+
+	.fader-label {
+		font-family: monospace;
+		font-size: 0.85rem;
+		font-weight: 700;
+		letter-spacing: 0.15em;
+		color: rgba(255,255,255,0.55);
+		text-transform: uppercase;
+	}
+
+	.fader-track-v {
+		height: 160px;
+		width: 50px;
 		display: flex;
 		align-items: center;
 		justify-content: center;
 	}
 
-	.vinyl-label span {
-		font-size: 0.45rem;
-		font-weight: 700;
-		letter-spacing: 0.15em;
-		color: rgba(255,255,255,0.4);
-		text-transform: uppercase;
+	.fader-input-v {
+		-webkit-appearance: slider-vertical;
+		appearance: slider-vertical;
+		writing-mode: vertical-lr;
+		direction: rtl;
+		width: 14px;
+		height: 100%;
+		background: #0a0a10;
+		border: 1px solid #222;
+		border-radius: 7px;
+		outline: none;
+		box-shadow: inset 0 1px 4px rgba(0,0,0,0.6);
 	}
 
+	.fader-input-v::-webkit-slider-thumb {
+		-webkit-appearance: none;
+		appearance: none;
+		width: 44px;
+		height: 26px;
+		border-radius: 4px;
+		background:
+			linear-gradient(180deg,
+				color-mix(in srgb, var(--sc) 50%, #444) 0%,
+				color-mix(in srgb, var(--sc) 40%, #222) 40%,
+				color-mix(in srgb, var(--sc) 30%, #111) 100%
+			);
+		border: 1px solid color-mix(in srgb, var(--sc) 30%, #555);
+		box-shadow:
+			inset 0 1px 2px rgba(255,255,255,0.12),
+			0 2px 6px rgba(0,0,0,0.5);
+		cursor: grab;
+	}
 
+	.fader-input-v::-moz-range-thumb {
+		width: 44px;
+		height: 26px;
+		border-radius: 4px;
+		background:
+			linear-gradient(180deg,
+				color-mix(in srgb, var(--sc) 50%, #444) 0%,
+				color-mix(in srgb, var(--sc) 40%, #222) 40%,
+				color-mix(in srgb, var(--sc) 30%, #111) 100%
+			);
+		border: 1px solid color-mix(in srgb, var(--sc) 30%, #555);
+		box-shadow:
+			inset 0 1px 2px rgba(255,255,255,0.12),
+			0 2px 6px rgba(0,0,0,0.5);
+		cursor: grab;
+	}
+
+	.fader-value {
+		font-family: monospace;
+		font-size: 1.1rem;
+		font-weight: 700;
+		color: color-mix(in srgb, var(--sc-glow) 80%, transparent);
+		text-shadow: 0 0 6px color-mix(in srgb, var(--sc) 40%, transparent);
+	}
+
+	/* ── Layout toggle ── */
+	.toggle-btn {
+		padding: 14px 24px;
+		border-radius: 8px;
+		background: #1a1a2a;
+		border: 1px solid #333;
+		color: rgba(255,255,255,0.4);
+		font-family: monospace;
+		font-size: 0.85rem;
+		font-weight: 700;
+		letter-spacing: 0.1em;
+		cursor: pointer;
+		transition: all 0.15s ease;
+	}
+
+	.toggle-btn.toggle-active {
+		background: color-mix(in srgb, var(--sc) 15%, #1a1a2a);
+		border-color: color-mix(in srgb, var(--sc) 40%, #333);
+		color: color-mix(in srgb, var(--sc) 70%, #fff);
+	}
+
+	/* ── Settings action buttons (right side) ── */
+	.settings-actions {
+		display: flex;
+		flex-direction: column;
+		justify-content: center;
+		gap: 16px;
+		padding: 16px 20px;
+		border-left: 1px solid #1a1a2a;
+	}
+
+	.action-btn {
+		padding: 12px 32px;
+		border-radius: 8px;
+		font-family: monospace;
+		font-size: 0.85rem;
+		font-weight: 700;
+		letter-spacing: 0.15em;
+		text-transform: uppercase;
+		cursor: pointer;
+		transition: all 0.15s ease;
+	}
+
+	.cancel-btn {
+		background: #1a1a2a;
+		border: 1px solid #333;
+		color: rgba(255,255,255,0.5);
+	}
+
+	.cancel-btn:active {
+		background: #252535;
+	}
+
+	.save-btn {
+		background: color-mix(in srgb, var(--sc) 25%, #1a1a2a);
+		border: 1px solid color-mix(in srgb, var(--sc) 50%, #333);
+		color: color-mix(in srgb, var(--sc) 80%, #fff);
+	}
+
+	.save-btn:active {
+		background: color-mix(in srgb, var(--sc) 35%, #1a1a2a);
+	}
 
 	/* ── Status bar ── */
 	.statusbar {
@@ -456,6 +856,7 @@
 		font-size: 0.7rem;
 		color: #6b7280;
 		pointer-events: none;
+		z-index: 60;
 	}
 
 	.dot {
@@ -480,7 +881,7 @@
 	}
 
 	/* ── Error overlay ── */
-	.error-overlay {
+	.error-overlay-err {
 		position: absolute;
 		inset: 0;
 		background: rgba(0, 0, 0, 0.85);

@@ -5,8 +5,11 @@ public class GameManager : MonoBehaviour
 {
     #region Sequence / Symbol Data
 
-    [Header("Symbol → Sprite Mapping")]
+    [Header("Symbol Sprites (ScratchPad_UP, ScratchPad_DOWN)")]
     [SerializeField] private List<SymbolSpritePair> symbolSprites;
+
+    [Header("Player Icon Sprites (instrument icons assigned to players)")]
+    [SerializeField] private List<Sprite> playerIconSprites;
 
     // Runtime lookup from logical symbol type to actual Sprite
     private Dictionary<SymbolType, Sprite> spriteLookup;
@@ -111,14 +114,21 @@ public class GameManager : MonoBehaviour
         return null;
     }
 
+    /// <summary>Returns the icon sprite assigned to a player (by index).</summary>
+    public Sprite GetPlayerIconSprite(int playerIndex)
+    {
+        if (playerIconSprites == null || playerIconSprites.Count == 0) return null;
+        return playerIconSprites[playerIndex % playerIconSprites.Count];
+    }
+
     #endregion
 
     #region Round Methods
 
     /// <summary>
-    /// Assigns 2 symbols per player then builds the round sequence from those assignments.
+    /// Assigns player icon sprites and creates a new round.
     /// </summary>
-    public void StartNewRound(float roundSpeed, int sequenceLength, List<Player> players)
+    public void StartNewRound(int sequenceLength, List<Player> players)
     {
         if (players.Count == 0)
         {
@@ -126,35 +136,67 @@ public class GameManager : MonoBehaviour
             return;
         }
 
-        // Build a shuffled pool of instrument symbols that have sprites configured
-        var instruments = new List<SymbolType>();
-        foreach (SymbolType s in System.Enum.GetValues(typeof(SymbolType)))
-            if (s != SymbolType.ScratchPad_UP && s != SymbolType.ScratchPad_DOWN
-                && spriteLookup.ContainsKey(s))
-                instruments.Add(s);
-
-        for (int i = instruments.Count - 1; i > 0; i--)
-        {
-            int j = Random.Range(0, i + 1);
-            (instruments[i], instruments[j]) = (instruments[j], instruments[i]);
-        }
-
-        if (instruments.Count < players.Count * 2)
-        {
-            Debug.LogError($"[GameManager] Not enough instrument types ({instruments.Count}) for {players.Count} players (need {players.Count * 2}).");
-            return;
-        }
-
-        // Every player gets 2 unique instruments on buttons, scratch is shared by all
         for (int i = 0; i < players.Count; i++)
         {
-            players[i].button1Symbol = instruments[i * 2];
-            players[i].button2Symbol = instruments[i * 2 + 1];
-            Debug.Log($"[GameManager] Player {players[i].id}: button1={players[i].button1Symbol} button2={players[i].button2Symbol}");
+            Debug.Log($"[GameManager] Player {players[i].id}: icon={GetPlayerIconSprite(i)?.name ?? "none"}");
         }
 
-        var available = new HashSet<SymbolType>(spriteLookup.Keys);
-        rounds.Add(new RoundData(roundSpeed, sequenceLength, players, available));
+        rounds.Add(new RoundData(sequenceLength));
+    }
+
+    /// <summary>
+    /// Generates sequences for all lanes at once. Each beat spawns exactly
+    /// playerCount symbols spread across totalLanes (= playerCount + 1),
+    /// so one lane is always empty per beat. The empty lane varies each beat.
+    /// Returns an array of sequences, one per lane. Null entries = no symbol on that beat.
+    /// </summary>
+    /// <param name="spawnChance">Chance (0-1) that symbols spawn on any given beat. Beats that fail the roll are fully empty (breather).</param>
+    public SymbolInstance[][] GenerateAllLaneSequences(int sequenceLength, int totalLanes, int playerCount, float spawnChance = 1f)
+    {
+        var symbols = new List<SymbolType>();
+        if (spriteLookup.ContainsKey(SymbolType.ScratchPad_UP))
+            symbols.Add(SymbolType.ScratchPad_UP);
+        if (spriteLookup.ContainsKey(SymbolType.ScratchPad_DOWN))
+            symbols.Add(SymbolType.ScratchPad_DOWN);
+
+        if (symbols.Count == 0)
+        {
+            Debug.LogError("[GameManager] No scratch symbol sprites configured!");
+            return System.Array.Empty<SymbolInstance[]>();
+        }
+
+        var sequences = new SymbolInstance[totalLanes][];
+        for (int lane = 0; lane < totalLanes; lane++)
+            sequences[lane] = new SymbolInstance[sequenceLength];
+
+        for (int beat = 0; beat < sequenceLength; beat++)
+        {
+            // Roll spawn chance — if it fails, entire beat is empty (breather)
+            if (Random.value > spawnChance)
+                continue; // all lanes stay null for this beat
+
+            int emptyLane = Random.Range(0, totalLanes);
+
+            for (int lane = 0; lane < totalLanes; lane++)
+            {
+                if (lane == emptyLane)
+                {
+                    sequences[lane][beat] = null;
+                }
+                else
+                {
+                    var symbolType = symbols[Random.Range(0, symbols.Count)];
+                    sequences[lane][beat] = new SymbolInstance
+                    {
+                        symbolType = symbolType,
+                        playerId   = -1,
+                        color      = Color.white
+                    };
+                }
+            }
+        }
+
+        return sequences;
     }
 
     // Call this when the round ends to store its results

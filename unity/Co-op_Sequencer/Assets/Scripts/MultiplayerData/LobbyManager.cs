@@ -54,6 +54,7 @@ public class LobbyManager : MonoBehaviour
         _server.OnClientDisconnected += HandleClientDisconnected;
         InputReceiver.OnButtonInput  += RouteButton;
         InputReceiver.OnScratchInput += RouteScratch;
+        InputReceiver.OnSliderInput  += RouteSlider;
     }
 
     void OnDisable()
@@ -63,6 +64,7 @@ public class LobbyManager : MonoBehaviour
         _server.OnClientDisconnected -= HandleClientDisconnected;
         InputReceiver.OnButtonInput  -= RouteButton;
         InputReceiver.OnScratchInput -= RouteScratch;
+        InputReceiver.OnSliderInput  -= RouteSlider;
     }
 
     // ── Public API ────────────────────────────────────────────────────────
@@ -75,54 +77,20 @@ public class LobbyManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Sends each player's symbol assignments to their phone.
+    /// Sends each player's assignment info to their phone.
     /// Call this after GameManager.AssignSymbolsToPlayers.
     /// </summary>
     public void SendSymbolAssignments()
     {
-        // Resolve GameManager at runtime — the serialized reference may be null
-        // after a scene transition since LobbyManager persists via DontDestroyOnLoad.
-        if (gameManager == null)
-            gameManager = FindFirstObjectByType<GameManager>();
-
-        if (gameManager == null)
-        {
-            Debug.LogError("[LobbyManager] No GameManager found — cannot send symbol images.");
-            return;
-        }
-
         foreach (var player in Lobby.players)
         {
-            var b1Img = gameManager.SpriteToBase64(player.button1Symbol);
-            var b2Img = gameManager.SpriteToBase64(player.button2Symbol);
-
-            Debug.Log($"[LobbyManager] Player {player.id}: b1Image={(b1Img != null ? $"{b1Img.Length} chars" : "NULL")}, b2Image={(b2Img != null ? $"{b2Img.Length} chars" : "NULL")}");
-
-            // Send button1 image
-            var msg1 = JsonUtility.ToJson(new PlayerAssignedMessage
+            var msg = JsonUtility.ToJson(new PlayerAssignedMessage
             {
-                playerId      = player.id,
-                color         = player.color,
-                button1Symbol = player.button1Symbol.ToString(),
-                button1Image  = b1Img,
-                button2Symbol = "",
-                button2Image  = "",
+                playerId = player.id,
+                color    = player.color,
             });
-            _server.SendToClient(player.clientId, msg1);
-            Debug.Log($"[LobbyManager] Sent button1 to player {player.id}: {player.button1Symbol} ({msg1.Length} chars)");
-
-            // Send button2 image
-            var msg2 = JsonUtility.ToJson(new PlayerAssignedMessage
-            {
-                playerId      = player.id,
-                color         = player.color,
-                button1Symbol = "",
-                button1Image  = "",
-                button2Symbol = player.button2Symbol.ToString(),
-                button2Image  = b2Img,
-            });
-            _server.SendToClient(player.clientId, msg2);
-            Debug.Log($"[LobbyManager] Sent button2 to player {player.id}: {player.button2Symbol} ({msg2.Length} chars)");
+            _server.SendToClient(player.clientId, msg);
+            Debug.Log($"[LobbyManager] Sent player assignment to player {player.id} ({player.color})");
         }
     }
 
@@ -140,6 +108,23 @@ public class LobbyManager : MonoBehaviour
             score         = totalScore,
             lastHitPoints = lastHitPoints,
             rating        = rating,
+        });
+        _server.SendToClient(player.clientId, msg);
+    }
+
+    /// <summary>
+    /// Sends a lane update to a specific player's phone.
+    /// </summary>
+    public void SendLaneUpdate(int playerId, int lane, int totalLanes)
+    {
+        var player = Lobby.GetPlayerById(playerId);
+        if (player == null || !player.connected) return;
+
+        var msg = JsonUtility.ToJson(new LaneUpdateMessage
+        {
+            playerId   = playerId,
+            lane       = lane,
+            totalLanes = totalLanes,
         });
         _server.SendToClient(player.clientId, msg);
     }
@@ -250,5 +235,12 @@ public class LobbyManager : MonoBehaviour
         var receiver = ResolveReceiver(e.player);
         if (receiver != null)
             receiver.DispatchScratch(e);
+    }
+
+    private void RouteSlider(SliderInputEvent e)
+    {
+        var receiver = ResolveReceiver(e.player);
+        if (receiver != null)
+            receiver.DispatchSlider(e);
     }
 }

@@ -7,8 +7,7 @@ public class Player
     public string     clientId;
     public string     color;         // hex, e.g. "#FF0000"
     public bool       connected = true;
-    public SymbolType button1Symbol; // unique instrument
-    public SymbolType button2Symbol; // unique instrument
+    public int        lane;          // current lane index (0-based)
 
     public Player(int id, string clientId, string color)
     {
@@ -16,5 +15,6 @@ public class Player
         this.clientId  = clientId;
         this.color     = color;
         this.connected = true;
+        this.lane      = id; // default: each player starts on their own lane
     }
 }

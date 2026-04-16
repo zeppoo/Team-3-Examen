@@ -9,8 +9,8 @@ interface WebSocketStore {
 	readonly lastError: ServerMessage | null;
 	readonly playerId: string | null;
 	readonly playerColor: string | null;
-	readonly button1Image: string | null;
-	readonly button2Image: string | null;
+	readonly lane: number;
+	readonly totalLanes: number;
 	readonly score: number;
 	readonly lastHitPoints: number | null;
 	readonly lastRating: string | null;
@@ -28,8 +28,8 @@ function createWebSocketStore(): WebSocketStore {
 	let lastError = $state<ServerMessage | null>(null);
 	let playerId = $state<string | null>(null);
 	let playerColor = $state<string | null>(null);
-	let button1Image = $state<string | null>(null);
-	let button2Image = $state<string | null>(null);
+	let lane = $state<number>(0);
+	let totalLanes = $state<number>(3);
 	let score = $state<number>(0);
 	let lastHitPoints = $state<number | null>(null);
 	let lastRating = $state<string | null>(null);
@@ -75,7 +75,8 @@ function createWebSocketStore(): WebSocketStore {
 		lobbyInfo = { ip, port, lobby };
 		const result = new Promise<boolean>(res => { _connectResolve = res; });
 
-		if (ip.includes('trycloudflare.com')) {
+		// Wait for tunnel to become reachable (both named tunnels and quick tunnels)
+		if (ip.includes('trycloudflare.com') || port === 443) {
 			const reachable = await waitForTunnel(ip);
 			if (!reachable) {
 				status = 'error';
@@ -122,15 +123,11 @@ function createWebSocketStore(): WebSocketStore {
 				} else if (msg.type === 'player_assigned') {
 					playerId = String(msg.playerId);
 					playerColor = msg.color;
-					if (msg.button1Image) {
-						button1Image = `data:image/png;base64,${msg.button1Image}`;
-						logger.net(`button1Image received: ${msg.button1Image.length} chars`);
-					}
-					if (msg.button2Image) {
-						button2Image = `data:image/png;base64,${msg.button2Image}`;
-						logger.net(`button2Image received: ${msg.button2Image.length} chars`);
-					}
-					logger.net(`Player assigned id=${playerId} color=${msg.color} hasB1=${!!button1Image} hasB2=${!!button2Image}`);
+					logger.net(`Player assigned id=${playerId} color=${msg.color}`);
+				} else if (msg.type === 'lane_update') {
+					lane = msg.lane;
+					totalLanes = msg.totalLanes;
+					logger.net(`Lane update: lane=${lane}/${totalLanes}`);
 				} else if (msg.type === 'score_update') {
 					score = msg.score;
 					lastHitPoints = msg.lastHitPoints;
@@ -204,8 +201,8 @@ function createWebSocketStore(): WebSocketStore {
 		lastError = null;
 		playerId = null;
 		playerColor = null;
-		button1Image = null;
-		button2Image = null;
+		lane = 0;
+		totalLanes = 3;
 		score = 0;
 		lastHitPoints = null;
 		lastRating = null;
@@ -222,8 +219,8 @@ function createWebSocketStore(): WebSocketStore {
 		get lastError() { return lastError; },
 		get playerId() { return playerId; },
 		get playerColor() { return playerColor; },
-		get button1Image() { return button1Image; },
-		get button2Image() { return button2Image; },
+		get lane() { return lane; },
+		get totalLanes() { return totalLanes; },
 		get score() { return score; },
 		get lastHitPoints() { return lastHitPoints; },
 		get lastRating() { return lastRating; },

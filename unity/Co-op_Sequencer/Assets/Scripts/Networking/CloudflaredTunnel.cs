@@ -9,11 +9,15 @@ using UnityEngine;
 /// <summary>
 /// Spawns cloudflared pointing at the local WebSocket server.
 ///
-/// Quick tunnel (default): no setup needed, hostname changes every run.
-/// Named tunnel: stable hostname, requires a Cloudflare tunnel ID + credentials file.
+/// Named tunnel (preferred): stable hostname via a system-service tunnel.
 ///   1. cloudflared tunnel create <name>
 ///   2. cloudflared tunnel route dns <tunnel-id> <your-hostname>
-///   3. Set TunnelId to the tunnel UUID and Hostname to your configured DNS name.
+///   3. Install as service: sudo cloudflared service install
+///   4. Set Hostname to your configured DNS name (e.g. game.example.com).
+///
+/// Quick tunnel (fallback): no setup needed, hostname changes every run.
+///   Used automatically when no named tunnel hostname is set, or when
+///   the named tunnel is unreachable.
 ///
 /// Add this component to the same GameObject as LobbyDisplay + WebSocketServer.
 ///
@@ -30,12 +34,12 @@ public class CloudflaredTunnel : MonoBehaviour
     [Tooltip("Path to the cloudflared binary. Leave empty to use PATH.")]
     public string cloudflaredPath = "cloudflared";
 
-    [Header("Named Tunnel (optional — leave empty to use a quick tunnel)")]
-    [Tooltip("Tunnel UUID from 'cloudflared tunnel list'. Leave empty for a quick tunnel.")]
-    public string tunnelId = "";
-
-    [Tooltip("The stable hostname routed to this tunnel (e.g. game.example.com).")]
+    [Header("Named Tunnel (stable hostname via system service)")]
+    [Tooltip("The stable hostname routed to your named tunnel (e.g. game.example.com). Leave empty to always use quick tunnels.")]
     public string hostname = "";
+
+    [Tooltip("Seconds to wait for the named tunnel to respond before falling back to a quick tunnel.")]
+    public float namedTunnelTimeoutSeconds = 5f;
 
     [Header("Health Check")]
     [Tooltip("Seconds between tunnel availability polls. 0 = disabled.")]
@@ -54,13 +58,11 @@ public class CloudflaredTunnel : MonoBehaviour
     void Start()
     {
         _cts = new CancellationTokenSource();
-        Task.Run(() => StartTunnelOnce(_cts.Token));
+        Task.Run(() => StartTunnel(_cts.Token));
     }
 
     void OnDestroy()
     {
-        // Only kill the tunnel if this instance actually started one.
-        // Prevents a duplicate (destroyed by LobbyManager) from killing the real tunnel.
         if (_process != null) KillTunnel();
     }
     void OnApplicationQuit() => KillTunnel();
@@ -70,25 +72,51 @@ public class CloudflaredTunnel : MonoBehaviour
     {
         KillTunnel();
         _cts = new CancellationTokenSource();
-        Task.Run(() => StartTunnelOnce(_cts.Token));
+        Task.Run(() => StartTunnel(_cts.Token));
     }
 
-    private bool IsNamedTunnel => !string.IsNullOrWhiteSpace(tunnelId);
+    private bool HasNamedTunnel => !string.IsNullOrWhiteSpace(hostname);
 
     // ── Main logic ────────────────────────────────────────────────────────
 
-    private async Task StartTunnelOnce(CancellationToken ct)
+    private async Task StartTunnel(CancellationToken ct)
     {
-        string currentHost = StartProcess(ct);
-        if (currentHost == null)
+        // Try named tunnel first (running as system service — no process to start)
+        if (HasNamedTunnel)
         {
-            // StartProcess already logs the specific error (rate limit, etc.)
-            return;
+            UnityEngine.Debug.Log($"[CloudflaredTunnel] Checking named tunnel at {hostname}...");
+            bool reachable = await CheckNamedTunnel(hostname, ct);
+
+            if (reachable)
+            {
+                UnityEngine.Debug.Log($"[CloudflaredTunnel] Named tunnel is live: {hostname}");
+                MainThreadDispatcher.Enqueue(() => OnTunnelReady?.Invoke(hostname));
+
+                // Poll to detect if named tunnel goes down
+                await PollNamedTunnel(hostname, ct);
+
+                if (!ct.IsCancellationRequested)
+                {
+                    UnityEngine.Debug.LogWarning("[CloudflaredTunnel] Named tunnel went down. Falling back to quick tunnel...");
+                    await StartQuickTunnel(ct);
+                }
+                return;
+            }
+
+            UnityEngine.Debug.LogWarning($"[CloudflaredTunnel] Named tunnel at {hostname} is not reachable. Falling back to quick tunnel...");
         }
+
+        await StartQuickTunnel(ct);
+    }
+
+    private async Task StartQuickTunnel(CancellationToken ct)
+    {
+        string currentHost = StartQuickTunnelProcess(ct);
+        if (currentHost == null) return;
 
         MainThreadDispatcher.Enqueue(() => OnTunnelReady?.Invoke(currentHost));
 
-        if (pollIntervalSeconds <= 0 || IsNamedTunnel)
+        if (pollIntervalSeconds <= 0)
         {
             DrainStderr(_process, ct);
             return;
@@ -98,21 +126,91 @@ public class CloudflaredTunnel : MonoBehaviour
 
         if (!ct.IsCancellationRequested)
         {
-            UnityEngine.Debug.LogWarning("[CloudflaredTunnel] Tunnel unreachable. Use the restart button to try again.");
+            UnityEngine.Debug.LogWarning("[CloudflaredTunnel] Quick tunnel unreachable. Use the restart button to try again.");
             KillProcess();
+        }
+    }
+
+    // ── Named tunnel health ──────────────────────────────────────────────
+
+    private async Task<bool> CheckNamedTunnel(string host, CancellationToken ct)
+    {
+        int timeoutMs = (int)(namedTunnelTimeoutSeconds * 1000);
+
+        // Mono's TLS stack can fail on some certs. Try HTTPS first, fall back to
+        // a raw TCP connect to port 443 which proves the tunnel is alive.
+        try
+        {
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            cts.CancelAfter(timeoutMs);
+            var response = await _http.SendAsync(
+                new HttpRequestMessage(HttpMethod.Head, $"https://{host}"),
+                HttpCompletionOption.ResponseHeadersRead,
+                cts.Token
+            );
+            int code = (int)response.StatusCode;
+            bool ok = code >= 200 && code < 500;
+            UnityEngine.Debug.Log($"[CloudflaredTunnel] Named tunnel HTTPS check: {code} (ok={ok})");
+            return ok;
+        }
+        catch (Exception ex)
+        {
+            UnityEngine.Debug.LogWarning($"[CloudflaredTunnel] HTTPS check failed ({ex.GetType().Name}), trying TCP fallback...");
+        }
+
+        // Fallback: just check if port 443 is open (proves tunnel + Cloudflare are up)
+        try
+        {
+            using var tcp = new System.Net.Sockets.TcpClient();
+            var connectTask = tcp.ConnectAsync(host, 443);
+            if (await Task.WhenAny(connectTask, Task.Delay(timeoutMs, ct)) == connectTask && tcp.Connected)
+            {
+                UnityEngine.Debug.Log($"[CloudflaredTunnel] Named tunnel TCP check OK — {host}:443 is open");
+                return true;
+            }
+        }
+        catch (Exception ex)
+        {
+            UnityEngine.Debug.LogWarning($"[CloudflaredTunnel] TCP check also failed: {ex.Message}");
+        }
+
+        return false;
+    }
+
+    private async Task PollNamedTunnel(string host, CancellationToken ct)
+    {
+        if (pollIntervalSeconds <= 0) return;
+
+        int failures = 0;
+        int intervalMs = (int)(pollIntervalSeconds * 1000);
+
+        while (!ct.IsCancellationRequested)
+        {
+            await Task.Delay(intervalMs, ct).ContinueWith(_ => { });
+            if (ct.IsCancellationRequested) return;
+
+            bool alive = await PingTunnel($"https://{host}");
+
+            if (alive)
+            {
+                failures = 0;
+            }
+            else
+            {
+                failures++;
+                UnityEngine.Debug.LogWarning($"[CloudflaredTunnel] Named tunnel health check failed ({failures}/{failuresBeforeRestart}) — {host}");
+                if (failures >= failuresBeforeRestart) return;
+            }
         }
     }
 
     // ── Process management ────────────────────────────────────────────────
 
-    /// <summary>Starts cloudflared, blocks until the tunnel URL is confirmed, returns the hostname.</summary>
-    private string StartProcess(CancellationToken ct)
+    private string StartQuickTunnelProcess(CancellationToken ct)
     {
         try
         {
-            string args = IsNamedTunnel
-                ? $"tunnel --no-autoupdate --protocol http2 run {tunnelId}"
-                : $"tunnel --url http://localhost:{localPort} --no-autoupdate --protocol http2";
+            string args = $"tunnel --url http://localhost:{localPort} --no-autoupdate --protocol http2";
 
             var psi = new ProcessStartInfo
             {
@@ -127,20 +225,13 @@ public class CloudflaredTunnel : MonoBehaviour
             _process = new Process { StartInfo = psi };
             _process.Start();
 
-            UnityEngine.Debug.Log($"[CloudflaredTunnel] Process started ({(IsNamedTunnel ? $"named tunnel {tunnelId}" : "quick tunnel")})");
+            UnityEngine.Debug.Log("[CloudflaredTunnel] Quick tunnel process started");
 
-            if (IsNamedTunnel)
-            {
-                return hostname;
-            }
-            else
-            {
-                return ReadUntilUrl(_process.StandardError, ct);
-            }
+            return ReadUntilUrl(_process.StandardError, ct);
         }
         catch (Exception ex)
         {
-            UnityEngine.Debug.LogError($"[CloudflaredTunnel] Failed to start: {ex.Message}");
+            UnityEngine.Debug.LogError($"[CloudflaredTunnel] Failed to start quick tunnel: {ex.Message}");
             return null;
         }
     }
@@ -200,10 +291,9 @@ public class CloudflaredTunnel : MonoBehaviour
 
             UnityEngine.Debug.Log($"[cloudflared] {line}");
 
-            // Detect Cloudflare rate limiting (429 = exceeded 200 concurrent in-flight requests)
             if (rateLimitRegex.IsMatch(line))
             {
-                UnityEngine.Debug.LogError("[CloudflaredTunnel] Rate limited by Cloudflare (429). Quick tunnels support max 200 concurrent in-flight requests. Use the restart button to try again.");
+                UnityEngine.Debug.LogError("[CloudflaredTunnel] Rate limited by Cloudflare (429). Use the restart button to try again.");
                 KillProcess();
                 return null;
             }
@@ -217,7 +307,7 @@ public class CloudflaredTunnel : MonoBehaviour
 
             if (pendingHost != null && readyRegex.IsMatch(line))
             {
-                UnityEngine.Debug.Log($"[CloudflaredTunnel] Tunnel ready: {pendingHost}");
+                UnityEngine.Debug.Log($"[CloudflaredTunnel] Quick tunnel ready: {pendingHost}");
                 var reader2 = reader;
                 var ct2     = ct;
                 Task.Run(() => DrainStderr(_process, ct2));
@@ -228,7 +318,7 @@ public class CloudflaredTunnel : MonoBehaviour
         return null;
     }
 
-    // ── Health polling ────────────────────────────────────────────────────
+    // ── Health polling (quick tunnel) ────────────────────────────────────
 
     private async Task PollUntilDead(string host, CancellationToken ct)
     {

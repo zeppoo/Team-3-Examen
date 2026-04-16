@@ -3,7 +3,7 @@ namespace CoopSequencer.Networking
     using System;
 
     /// <summary>
-    /// Message schemas sent from the mobile controller to the game host.
+    /// Message schemas sent between the mobile controller and the game host.
     /// Every field name must match the JSON keys exactly (camelCase).
     /// Mirrored in mobile/controller-app/src/lib/messages.ts.
     /// </summary>
@@ -25,15 +25,17 @@ namespace CoopSequencer.Networking
         public string type;
     }
 
+    // ─── Client → Server messages ────────────────────────────────────────
+
+    // Legacy button message — kept for backward compatibility with SymbolScroller.
     // {"type":"button","button":"button1","player":"clientId","state":"press"}
-    // state: "press" | "release"
     [Serializable]
     public class ButtonMessage
     {
-        public string type;    // always "button"
-        public string button;  // e.g. "button1", "button2"
-        public string player;  // clientId of the player who pressed it
-        public string state;   // "press" | "release"
+        public string type;
+        public string button;
+        public string player;
+        public string state;
     }
 
     // {"type":"scratch","player":"clientId","velocity":4.5}
@@ -46,18 +48,37 @@ namespace CoopSequencer.Networking
         public float  velocity;
     }
 
-    // Sent from Unity to the phone immediately after it joins, and again when symbols are assigned.
-    // {"type":"player_assigned","playerId":0,"color":"#E74C3C","button1Symbol":"Square","button1Image":"<base64>","button2Symbol":"Heart","button2Image":"<base64>"}
+    // {"type":"slider","player":"clientId","direction":"up"}
+    // direction: "up" | "down" — lane switch via the DJ fader
+    [Serializable]
+    public class SliderMessage
+    {
+        public string type;      // always "slider"
+        public string player;    // clientId of the player
+        public string direction; // "up" | "down"
+    }
+
+    // ─── Server → Client messages ────────────────────────────────────────
+
+    // Sent from Unity to the phone immediately after it joins.
+    // {"type":"player_assigned","playerId":0,"color":"#E74C3C"}
     [Serializable]
     public class PlayerAssignedMessage
     {
-        public string type           = "player_assigned";
+        public string type    = "player_assigned";
         public int    playerId;
-        public string color;          // hex, e.g. "#E74C3C"
-        public string button1Symbol;  // unique instrument
-        public string button1Image;
-        public string button2Symbol;  // unique instrument
-        public string button2Image;
+        public string color;  // hex, e.g. "#E74C3C"
+    }
+
+    // Sent from Unity when a player's lane changes.
+    // {"type":"lane_update","playerId":0,"lane":2,"totalLanes":4}
+    [Serializable]
+    public class LaneUpdateMessage
+    {
+        public string type       = "lane_update";
+        public int    playerId;
+        public int    lane;       // current lane index (0-based)
+        public int    totalLanes; // total number of lanes
     }
 
     // Sent from Unity to the phone when the player's score changes.

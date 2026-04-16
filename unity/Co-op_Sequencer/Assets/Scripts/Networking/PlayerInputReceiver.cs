@@ -10,12 +10,14 @@ public class PlayerInputReceiver
 
     public event Action<ButtonInputEvent>  OnButtonInput;
     public event Action<ScratchInputEvent> OnScratchInput;
+    public event Action<SliderInputEvent>  OnSliderInput;
 
     public PlayerInputReceiver(Player player)
     {
         this.player = player;
     }
 
-    internal void DispatchButton(ButtonInputEvent e)  => OnButtonInput?.Invoke(e);
-    internal void DispatchScratch(ScratchInputEvent e) => OnScratchInput?.Invoke(e);
+    internal void DispatchButton(ButtonInputEvent e)   => OnButtonInput?.Invoke(e);
+    internal void DispatchScratch(ScratchInputEvent e)  => OnScratchInput?.Invoke(e);
+    internal void DispatchSlider(SliderInputEvent e)    => OnSliderInput?.Invoke(e);
 }

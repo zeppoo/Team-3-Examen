@@ -11,16 +11,7 @@ export interface LobbyInfo {
 }
 
 
-// Sent when a drum pad is pressed or released.
-// {"type":"button","button":"button1","player":"<clientId>","state":"press"}
-export interface ButtonMessage {
-	type: 'button';
-	button: 'button1' | 'button2';
-	player: string;
-	state: 'press' | 'release';
-}
-
-// Sent continuously while the scratch disc is being dragged.
+// Sent continuously while the scratch disc is being dragged (main gameplay input).
 // {"type":"scratch","player":"<clientId>","velocity":4.5}
 export interface ScratchMessage {
 	type: 'scratch';
@@ -29,8 +20,16 @@ export interface ScratchMessage {
 	velocity: number;
 }
 
+// Sent when the player slides the DJ fader to switch lane.
+// {"type":"slider","player":"<clientId>","direction":"up"|"down"}
+export interface SliderMessage {
+	type: 'slider';
+	player: string;
+	direction: 'up' | 'down';
+}
+
 // Union of all messages the controller can send.
-export type ControllerMessage = ButtonMessage | ScratchMessage;
+export type ControllerMessage = ScratchMessage | SliderMessage;
 
 // ─── Server → client messages ─────────────────────────────────────────────────
 
@@ -41,16 +40,20 @@ export interface ErrorMessage {
 }
 
 // Sent by Unity immediately after a player joins, assigning their id and color.
-// Sent again when symbols are assigned with button image data.
-// {"type":"player_assigned","playerId":0,"color":"#fe0000","button1Symbol":"Square","button1Image":"<base64>","button2Symbol":"Heart","button2Image":"<base64>"}
+// {"type":"player_assigned","playerId":0,"color":"#fe0000"}
 export interface PlayerAssignedMessage {
 	type: 'player_assigned';
 	playerId: number;
 	color: string;          // hex, e.g. "#fe0000"
-	button1Symbol?: string; // unique instrument
-	button1Image?: string;  // base64 PNG
-	button2Symbol?: string; // unique instrument
-	button2Image?: string;
+}
+
+// Sent by Unity when a player's lane changes.
+// {"type":"lane_update","playerId":0,"lane":2,"totalLanes":4}
+export interface LaneUpdateMessage {
+	type: 'lane_update';
+	playerId: number;
+	lane: number;           // current lane index (0-based)
+	totalLanes: number;     // total number of lanes
 }
 
 // Sent by Unity when the player's score changes after a hit or miss.
@@ -63,14 +66,14 @@ export interface ScoreUpdateMessage {
 	rating: 'perfect' | 'good' | 'ok' | 'miss';
 }
 
-export type ServerMessage = ErrorMessage | PlayerAssignedMessage | ScoreUpdateMessage;
+export type ServerMessage = ErrorMessage | PlayerAssignedMessage | LaneUpdateMessage | ScoreUpdateMessage;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-export function buttonMessage(button: ButtonMessage['button'], state: ButtonMessage['state'], player: string): ButtonMessage {
-	return { type: 'button', button, player, state };
-}
-
 export function scratchMessage(velocity: number, player: string): ScratchMessage {
 	return { type: 'scratch', player, velocity };
+}
+
+export function sliderMessage(direction: SliderMessage['direction'], player: string): SliderMessage {
+	return { type: 'slider', player, direction };
 }
