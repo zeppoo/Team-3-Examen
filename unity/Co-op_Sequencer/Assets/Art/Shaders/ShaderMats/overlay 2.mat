@@ -40,9 +40,11 @@ Material:
     m_Ints: []
     m_Floats:
     - _COLOROVERLAY: 1
+    - _ColorGradient: 0
     - _QueueControl: 0
     - _QueueOffset: 0
-    - _Strengt: 0.004
+    - _Strengt: 0.0032
+    - _transperentsy: 1
     m_Colors:
     - _Color: {r: 0, g: 0, b: 1, a: 1}
     - _Derection: {r: 1, g: 0, b: 0, a: 0}
