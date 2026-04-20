@@ -24,7 +24,8 @@ Material:
   m_Shader: {fileID: -6465566751694194690, guid: 8fcad4dd9abd3e048b02ed5aaa5e4c8d, type: 3}
   m_Parent: {fileID: 2100000, guid: bcb3935c38748b44cad9df3e072e7f91, type: 2}
   m_ModifiedSerializedProperties: 0
-  m_ValidKeywords: []
+  m_ValidKeywords:
+  - _HYPEBARFULL
   m_InvalidKeywords:
   - _SURFACE_TYPE_TRANSPARENT
   m_LightmapFlags: 4
@@ -75,12 +76,13 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _TextureNormal:
-        m_Texture: {fileID: 2800000, guid: afb887fc732c8134785ea2d6839fbb72, type: 3}
+        m_Texture: {fileID: 2800000, guid: 9b611c340b87ee5419e5c129cf909bd8, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
-    - _HYPEBARFULL: 0
+    - _Fill: 0.733
+    - _HYPEBARFULL: 1
     - _RippleAmouth: 10.59
     m_Colors:
     - _BaseColor: {r: 1, g: 1, b: 1, a: 1}
