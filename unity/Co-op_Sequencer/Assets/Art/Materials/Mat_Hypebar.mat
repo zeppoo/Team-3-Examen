@@ -39,8 +39,44 @@ Material:
   m_SavedProperties:
     serializedVersion: 3
     m_TexEnvs:
+    - _Blackborder:
+        m_Texture: {fileID: 2800000, guid: 704f6cf3cd678f041a9b39baff295b21, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _HypeMask:
+        m_Texture: {fileID: 2800000, guid: 8b4e4f05f630f7a4e87266dcfdb2682f, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _Mask:
+        m_Texture: {fileID: 2800000, guid: 8b4e4f05f630f7a4e87266dcfdb2682f, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _SampleTexture2D_1cf7b76bbf264ce08a2bf20111631297_Texture_1_Texture2D:
+        m_Texture: {fileID: 2800000, guid: 704f6cf3cd678f041a9b39baff295b21, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _SampleTexture2D_99fa07d3122b405cb3687640ebdddbd4_Texture_1_Texture2D:
+        m_Texture: {fileID: 2800000, guid: afb887fc732c8134785ea2d6839fbb72, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _SampleTexture2D_d68e505e59204470a23428927b66e396_Texture_1_Texture2D:
+        m_Texture: {fileID: 2800000, guid: 863b570466fe714488b275f800d043d2, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _SampleTexture2D_f35da0e51f62447796e0f531e4a2cf4d_Texture_1_Texture2D:
+        m_Texture: {fileID: 2800000, guid: afb887fc732c8134785ea2d6839fbb72, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
     - _Texture:
-        m_Texture: {fileID: 2800000, guid: 298d80cfa6f0a444fbdf31e2f613816b, type: 3}
+        m_Texture: {fileID: 2800000, guid: 863b570466fe714488b275f800d043d2, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _TextureHype:
+        m_Texture: {fileID: 2800000, guid: 863b570466fe714488b275f800d043d2, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _TextureNormal:
+        m_Texture: {fileID: 2800000, guid: afb887fc732c8134785ea2d6839fbb72, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     m_Ints: []
