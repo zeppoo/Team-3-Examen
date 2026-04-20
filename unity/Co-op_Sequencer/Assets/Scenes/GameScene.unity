@@ -1235,9 +1235,25 @@ PrefabInstance:
       propertyPath: m_TagString
       value: HypeBar
       objectReference: {fileID: 0}
+    - target: {fileID: 987437912147118688, guid: d5bade76d605a9043a80d273692bd447, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 4.23
+      objectReference: {fileID: 0}
+    - target: {fileID: 987437912147118688, guid: d5bade76d605a9043a80d273692bd447, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: -0.46
+      objectReference: {fileID: 0}
+    - target: {fileID: 987437912147118688, guid: d5bade76d605a9043a80d273692bd447, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 2.22
+      objectReference: {fileID: 0}
     - target: {fileID: 1603581125465462610, guid: d5bade76d605a9043a80d273692bd447, type: 3}
       propertyPath: m_Name
       value: HypeBarRoot
+      objectReference: {fileID: 0}
+    - target: {fileID: 4626143725210154393, guid: d5bade76d605a9043a80d273692bd447, type: 3}
+      propertyPath: m_Materials.Array.size
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 4868932301886831555, guid: d5bade76d605a9043a80d273692bd447, type: 3}
       propertyPath: m_LocalPosition.x
