@@ -24,8 +24,7 @@ Material:
   m_Shader: {fileID: -6465566751694194690, guid: 8fcad4dd9abd3e048b02ed5aaa5e4c8d, type: 3}
   m_Parent: {fileID: 2100000, guid: bcb3935c38748b44cad9df3e072e7f91, type: 2}
   m_ModifiedSerializedProperties: 0
-  m_ValidKeywords:
-  - _HYPEBARFULL
+  m_ValidKeywords: []
   m_InvalidKeywords:
   - _SURFACE_TYPE_TRANSPARENT
   m_LightmapFlags: 4
@@ -41,6 +40,14 @@ Material:
     m_TexEnvs:
     - _Blackborder:
         m_Texture: {fileID: 2800000, guid: 704f6cf3cd678f041a9b39baff295b21, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _BorderTexture:
+        m_Texture: {fileID: 2800000, guid: 704f6cf3cd678f041a9b39baff295b21, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _FillMaskTexture:
+        m_Texture: {fileID: 2800000, guid: ab1dd6527fec8764f89b9ac523331db9, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _HypeMask:
@@ -59,12 +66,20 @@ Material:
         m_Texture: {fileID: 2800000, guid: afb887fc732c8134785ea2d6839fbb72, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
+    - _SampleTexture2D_bfe608a252d2471dbd30fd4460b7f9aa_Texture_1_Texture2D:
+        m_Texture: {fileID: 2800000, guid: 298d80cfa6f0a444fbdf31e2f613816b, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
     - _SampleTexture2D_d68e505e59204470a23428927b66e396_Texture_1_Texture2D:
         m_Texture: {fileID: 2800000, guid: 863b570466fe714488b275f800d043d2, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _SampleTexture2D_f35da0e51f62447796e0f531e4a2cf4d_Texture_1_Texture2D:
         m_Texture: {fileID: 2800000, guid: afb887fc732c8134785ea2d6839fbb72, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _SampleTexture2D_f81fcdd256d5459eb7730c9103fc0065_Texture_1_Texture2D:
+        m_Texture: {fileID: 2800000, guid: 8b4e4f05f630f7a4e87266dcfdb2682f, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _Texture:
@@ -81,10 +96,11 @@ Material:
         m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
-    - _Fill: 0.733
-    - _HYPEBARFULL: 1
+    - _Fill: 0.239
+    - _HYPEBARFULL: 0
     - _RippleAmouth: 10.59
     m_Colors:
-    - _BaseColor: {r: 1, g: 1, b: 1, a: 1}
+    - _BaseColor: {r: 1, g: 0, b: 0, a: 1}
+    - _Fillcolor: {r: 1, g: 0.29771405, b: 0, a: 1}
   m_BuildTextureStacks: []
   m_AllowLocking: 1
