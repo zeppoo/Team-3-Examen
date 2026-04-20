@@ -12,7 +12,12 @@ public class GameStarter : MonoBehaviour
 {
     [Header("References")]
     [SerializeField] private GameManager    gameManager;
-    [SerializeField] private SymbolScroller symbolScroller;
+    [SerializeField] private LaneManager    laneManager;
+
+    [Header("Announcement")]
+    [SerializeField] private TMP_Text announcementText;
+    [SerializeField] private float displayDuration = 1.5f;
+    [SerializeField] private float fadeDuration    = 0.5f;
 
     [Header("Announcement")]
     [SerializeField] private TMP_Text announcementText;
@@ -20,14 +25,13 @@ public class GameStarter : MonoBehaviour
     [SerializeField] private float fadeDuration    = 0.5f;
 
     [Header("Round Settings")]
+    [Tooltip("Total rounds to play. Set to 0 for infinite rounds.")]
     [SerializeField] private int   totalRounds    = 3;
-    [SerializeField] private float roundSpeed     = 1.5f;
     [SerializeField] private int   sequenceLength = 20;
     [SerializeField] private float delayBetweenRounds = 2f;
-    [Tooltip("Each round the beat interval is multiplied by this (e.g. 0.85 = 15% faster).")]
-    [SerializeField] private float speedMultiplierPerRound = 0.85f;
 
     private LobbyManager _lobbyManager;
+    private AudioManager _audioManager;
     private bool _paused;
     private bool _roundStarted;
     private int  _currentRound = 0;
@@ -46,9 +50,13 @@ public class GameStarter : MonoBehaviour
             return;
         }
 
+        _audioManager = FindFirstObjectByType<AudioManager>();
+        if (_audioManager == null)
+            Debug.LogWarning("[GameStarter] No AudioManager found — music won't play.");
+
         _lobbyManager.OnPlayerDisconnected += OnPlayerDisconnected;
         _lobbyManager.OnPlayerReconnected  += OnPlayerReconnected;
-        symbolScroller.OnSequenceComplete  += OnRoundComplete;
+        laneManager.OnAllLanesComplete     += OnRoundComplete;
 
         _startCoroutine = StartCoroutine(StartRoundSequence());
     }
@@ -60,8 +68,8 @@ public class GameStarter : MonoBehaviour
             _lobbyManager.OnPlayerDisconnected -= OnPlayerDisconnected;
             _lobbyManager.OnPlayerReconnected  -= OnPlayerReconnected;
         }
-        if (symbolScroller != null)
-            symbolScroller.OnSequenceComplete -= OnRoundComplete;
+        if (laneManager != null)
+            laneManager.OnAllLanesComplete -= OnRoundComplete;
     }
 
     // ── Pause / Resume ───────────────────────────────────────────────────
@@ -71,11 +79,11 @@ public class GameStarter : MonoBehaviour
         if (_paused) return;
         _paused = true;
 
-        symbolScroller.SetPaused(true);
+        laneManager.SetAllPaused(true);
+        _audioManager?.Pause();
 
         if (announcementText != null)
         {
-            // Only cancel announcement fades, not the start coroutine
             announcementText.text  = "Waiting for players...";
             announcementText.alpha = 1f;
             announcementText.gameObject.SetActive(true);
@@ -93,14 +101,13 @@ public class GameStarter : MonoBehaviour
 
         if (_roundStarted)
         {
-            // Round was already running — just resume
-            symbolScroller.SetPaused(false);
+            laneManager.SetAllPaused(false);
+            _audioManager?.Resume();
             if (announcementText != null)
                 StartCoroutine(ShowAnnouncementCoroutine("Go!"));
         }
         else
         {
-            // Round never started (disconnect happened during the countdown) — start fresh
             if (announcementText != null)
                 announcementText.gameObject.SetActive(false);
             _startCoroutine = StartCoroutine(StartRoundSequence());
@@ -115,7 +122,7 @@ public class GameStarter : MonoBehaviour
     {
         _roundStarted = false;
 
-        if (_currentRound >= totalRounds)
+        if (totalRounds > 0 && _currentRound >= totalRounds)
         {
             Debug.Log("[GameStarter] All rounds complete!");
             StartCoroutine(ShowAnnouncementCoroutine("Game Over!"));
@@ -136,7 +143,11 @@ public class GameStarter : MonoBehaviour
     {
         _currentRound++;
 
-        gameManager.StartNewRound(roundSpeed, sequenceLength, _lobbyManager.Lobby.players);
+        // Set up lanes on first round
+        if (_currentRound == 1)
+            laneManager.SetupLanes(_lobbyManager.Lobby.players.Count);
+
+        gameManager.StartNewRound(sequenceLength, _lobbyManager.Lobby.players);
         _lobbyManager.SendSymbolAssignments();
 
         if (announcementText != null)
@@ -159,12 +170,45 @@ public class GameStarter : MonoBehaviour
             announcementText.gameObject.SetActive(false);
         }
 
-        // Speed up the beat interval each round
-        if (_currentRound > 1)
-            symbolScroller.BeatInterval *= speedMultiplierPerRound;
+        // Start music on the first round
+        if (_currentRound == 1)
+            _audioManager?.Play();
+
+        // Generate sequences for all lanes (playerCount symbols per beat, one lane empty, with breather beats)
+        int playerCount = _lobbyManager.Lobby.players.Count;
+        var sequences = gameManager.GenerateAllLaneSequences(
+            sequenceLength, laneManager.TotalLanes, playerCount, laneManager.SymbolSpawnChance);
 
         _roundStarted = true;
-        symbolScroller.StartScrolling();
+        laneManager.StartAllLaneSequences(sequences);
+    }
+
+    // ── Announcement helper ──────────────────────────────────────────────
+
+    public void ShowAnnouncement(string message)
+    {
+        if (announcementText != null)
+            StartCoroutine(ShowAnnouncementCoroutine(message));
+    }
+
+    private IEnumerator ShowAnnouncementCoroutine(string message)
+    {
+        announcementText.text  = message;
+        announcementText.alpha = 1f;
+        announcementText.gameObject.SetActive(true);
+
+        yield return new WaitForSeconds(displayDuration);
+
+        float elapsed = 0f;
+        while (elapsed < fadeDuration)
+        {
+            elapsed += Time.deltaTime;
+            announcementText.alpha = 1f - (elapsed / fadeDuration);
+            yield return null;
+        }
+
+        announcementText.alpha = 0f;
+        announcementText.gameObject.SetActive(false);
     }
 
     // ── Announcement helper ──────────────────────────────────────────────

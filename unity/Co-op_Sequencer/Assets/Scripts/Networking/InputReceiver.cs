@@ -5,8 +5,8 @@ using CoopSequencer.Networking;
 /// <summary>
 /// Translation layer between raw WebSocket messages and typed game input events.
 ///
-/// Subscribe to OnButtonInput / OnScratchInput anywhere in the game to react
-/// to player input without touching networking code.
+/// Subscribe to OnButtonInput / OnScratchInput / OnSliderInput anywhere in the
+/// game to react to player input without touching networking code.
 ///
 /// Attach to the same GameObject as WebSocketServer.
 /// </summary>
@@ -14,11 +14,20 @@ public class InputReceiver : MonoBehaviour
 {
     // ── Typed game input events ───────────────────────────────────────────
 
-    /// <summary>Fired when a player presses or releases a button.</summary>
+    /// <summary>Fired when a player presses or releases a button (legacy, kept for SymbolScroller compat).</summary>
     public static event Action<ButtonInputEvent> OnButtonInput;
 
     /// <summary>Fired when a player moves the scratchpad.</summary>
     public static event Action<ScratchInputEvent> OnScratchInput;
+
+    /// <summary>Fired when a player swipes the DJ slider to switch lane.</summary>
+    public static event Action<SliderInputEvent> OnSliderInput;
+
+    /// <summary>Fired when a player submits a symbol + name selection from the mobile select screen.</summary>
+    public static event Action<string, SymbolSelectMessage> OnSymbolSelect;
+
+    /// <summary>Fired when a phone sends a reconnect handshake (has a valid cookie for this lobby).</summary>
+    public static event Action<string, RejoinMessage> OnRejoin;
 
     // ─────────────────────────────────────────────────────────────────────
 
@@ -63,8 +72,30 @@ public class InputReceiver : MonoBehaviour
                     player:   string.IsNullOrEmpty(rawScratch.player) ? clientId : rawScratch.player,
                     velocity: rawScratch.velocity
                 );
-                Debug.Log($"[Input] {scratchEvent.player} scratch velocity={scratchEvent.velocity:F2}");
                 OnScratchInput?.Invoke(scratchEvent);
+                break;
+
+            case "slider":
+                var rawSlider = JsonUtility.FromJson<SliderMessage>(json);
+                var dir = rawSlider.direction == "up" ? SliderDirection.Up : SliderDirection.Down;
+                var sliderEvent = new SliderInputEvent(
+                    player:    string.IsNullOrEmpty(rawSlider.player) ? clientId : rawSlider.player,
+                    direction: dir
+                );
+                Debug.Log($"[Input] {sliderEvent.player} slider {sliderEvent.direction}");
+                OnSliderInput?.Invoke(sliderEvent);
+                break;
+
+            case "symbol_select":
+                var rawSymbol = JsonUtility.FromJson<SymbolSelectMessage>(json);
+                Debug.Log($"[Input] {clientId} symbol_select symbol={rawSymbol.symbol} name={rawSymbol.name}");
+                OnSymbolSelect?.Invoke(clientId, rawSymbol);
+                break;
+
+            case "rejoin":
+                var rawRejoin = JsonUtility.FromJson<RejoinMessage>(json);
+                Debug.Log($"[Input] {clientId} rejoin lobbyId={rawRejoin.lobbyId} token={rawRejoin.reconnectToken}");
+                OnRejoin?.Invoke(clientId, rawRejoin);
                 break;
 
             default:

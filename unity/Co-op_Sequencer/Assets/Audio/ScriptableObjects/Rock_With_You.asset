@@ -1,0 +1,19 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 73afc4d4703b3aca4bfc5dadcb30220a, type: 3}
+  m_Name: Rock_With_You
+  m_EditorClassIdentifier: Assembly-CSharp::MusicTrack
+  trackName: Rock With You
+  clip: {fileID: 8300000, guid: 891d694160c258165a967d18eb575b4a, type: 3}
+  bpm: 114
+  startOffset: 0
+  beatsPerBar: 4

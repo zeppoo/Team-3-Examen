@@ -1,57 +1,66 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// Displays a queue of upcoming symbols with the active one in a highlight box.
-/// Players must perform the correct action within a time window.
-/// A rotating timing indicator orbits the active frame — when the player hits,
-/// the indicator freezes and points are awarded based on how close to the
-/// "perfect" moment (center of the beat) the input was.
+/// Per-lane symbol scroller. Symbols slide smoothly from right to left,
+/// synced to the AudioManager's DSP clock so they always land on-beat.
 ///
-/// Setup:
-///   - activeSlot       : RectTransform where the current symbol is shown (the "box")
-///   - queueParent      : RectTransform that holds the upcoming symbol tiles (vertical list)
-///   - symbolPrefab     : prefab with an Image component
-///   - gameManager      : reference to GameManager
-///   - visibleQueueSize : how many upcoming symbols to show below the active box
+/// Hit detection: any symbol currently overlapping the timing zone can be hit.
+/// The closest symbol to the timing zone center is checked first.
 /// </summary>
 public class SymbolScroller : MonoBehaviour
 {
-    [Header("References")]
-    [SerializeField] private GameManager  gameManager;
-    [SerializeField] private LobbyManager lobbyManager;
-    [SerializeField] private GameObject   symbolPrefab;
-
-    [Header("UI Slots")]
-    [SerializeField] private RectTransform activeSlot;   // the box where the current symbol lives
-    [SerializeField] private RectTransform queueParent;  // horizontal list of upcoming symbols (use Horizontal Layout Group)
-
     [Header("Settings")]
-    [SerializeField] private int   visibleQueueSize = 5; // how many upcoming symbols to show
-    [SerializeField] private float beatInterval = 1f;     // seconds per symbol (placeholder until BPM is wired)
-    public float BeatInterval { get => beatInterval; set => beatInterval = Mathf.Max(0.2f, value); }
-
-    [Header("Scratch")]
+    [SerializeField] private float symbolSize = 80f;
     [SerializeField] private float scratchVelocityThreshold = 3f;
+    [SerializeField] private int beatsToReachTiming = 4;
 
-    [Header("Timing Indicator")]
-    [SerializeField] private Color indicatorColor = Color.white;
-    [SerializeField] private float indicatorSize  = 16f;  // px diameter of the dot
-    [SerializeField] private float indicatorOrbitPadding = 8f; // extra px outside the active slot
+    [Header("Timing Zone")]
+    [Tooltip("Fallback hit window in beats if no TimingZone rect is assigned.")]
+    [SerializeField] private float fallbackHitWindowBeats = 0.5f;
 
     [Header("Scoring")]
-    [SerializeField] private int perfectPoints = 100;
-    [SerializeField] private int goodPoints    = 50;
-    [SerializeField] private int okPoints      = 25;
-    [Tooltip("Fraction of beat considered 'perfect' (0-0.5). E.g. 0.08 = ±8% of beat around center.")]
-    [SerializeField] private float perfectWindow = 0.08f;
-    [Tooltip("Fraction considered 'good' (0-0.5).")]
-    [SerializeField] private float goodWindow    = 0.20f;
+    [SerializeField] private int   perfectPoints = 100;
+    [SerializeField] private int   goodPoints    = 50;
+    [SerializeField] private int   okPoints      = 25;
+    [SerializeField] private float perfectWindow = 0.15f;
+    [SerializeField] private float goodWindow    = 0.40f;
 
-    /// <summary>Fired when the active symbol is resolved (hit or missed). Bool = was it a hit.</summary>
+    [Header("Hit Feedback")]
+    [SerializeField] private float correctFadeDuration   = 0.3f;
+    [SerializeField] private float correctScaleMultiplier = 1.4f;
+    [SerializeField] private float wrongFadeDuration      = 0.2f;
+
+    [Header("Debug")]
+    [SerializeField] private bool showTimingDebug = true;
+
+    public int LaneIndex { get; set; }
+
+    // Events
     public event Action<SymbolInstance, bool> OnSymbolResolved;
+    public event Action<int> OnTimingScored;
+    public event Action OnWrongInput;
+    public event Action OnSequenceComplete;
+
+    // References (set via Initialize)
+    private RectTransform _scrollArea;
+    private RectTransform _symbolContainer;
+    private RectTransform _timingZoneRT;
+    private GameObject _symbolPrefab;
+    private GameManager _gameManager;
+    private AudioManager _audioManager;
+
+    // Layout
+    private float _timingX;
+    private float _timingHalfWidth;
+    private float _hitWindowBeats;
+    private float _spawnX;
+    private float _destroyX;
+    private float _pixelsPerBeat;
+    private bool _layoutDirty;
 
     /// <summary>Fired on a successful hit with the points earned (0 for miss).</summary>
     public event Action<int> OnTimingScored;
@@ -64,388 +73,516 @@ public class SymbolScroller : MonoBehaviour
 
     // State
     private SymbolInstance[] _sequence;
-    private int   _currentIndex = 0;
-    private float _timer        = 0f;
-    private bool  _running      = false;
-    private bool  _paused       = false;
-    private bool  _activeHit    = false;
+    private int   _nextSpawnIndex;
+    private bool  _running;
+    private bool  _paused;
+    private int   _resolvedCount; // how many symbols have been resolved (hit or missed)
 
-    // Cooldown after a hit — blocks input for a short period so queued scratch
-    // events don't instantly consume the next symbol.
-    private float _hitCooldown  = 0f;
-    private const float HIT_COOLDOWN_DURATION = 0.15f; // seconds
+    // Beat sync
+    private int _startBeat;
 
-    // Active symbol UI
-    private GameObject _activeGO;
-    private Image      _activeImg;
+    private float SecPerBeat => _audioManager != null ? _audioManager.SecondsPerBeat : 0.5f;
 
-    // Timing indicator (created at runtime)
-    private GameObject _indicatorGO;
-    private RectTransform _indicatorRT;
-    private Image _indicatorImg;
-    private bool _indicatorFrozen = false;
+    // Live symbol tiles
+    private readonly List<SymbolTile> _tiles = new();
 
-    // Queue tiles
-    private readonly List<(GameObject go, Image img)> _queueTiles = new();
-
-    // ── Public API ────────────────────────────────────────────────────────
-
-    void Awake()
+    private class SymbolTile
     {
-        if (lobbyManager == null)
-        {
-            foreach (var lm in FindObjectsByType<LobbyManager>(FindObjectsSortMode.None))
-            {
-                if (lm.Lobby != null) { lobbyManager = lm; break; }
-            }
-        }
+        public GameObject go;
+        public RectTransform rt;
+        public Image img;
+        public int sequenceIndex;
+        public bool resolved; // already hit or missed — skip during detection
     }
 
-    public void StartScrolling()
+    // ── Configuration ────────────────────────────────────────────────────
+
+    public void Initialize(RectTransform scrollArea, RectTransform symbolContainer,
+                           RectTransform timingZone, GameObject symbolPrefab,
+                           GameManager gameManager, AudioManager audioManager)
     {
-        var round = gameManager.CurrentRound;
-        if (round == null || round.sequence == null || round.sequence.Length == 0)
+        _scrollArea      = scrollArea;
+        _symbolContainer = symbolContainer;
+        _timingZoneRT    = timingZone;
+        _symbolPrefab    = symbolPrefab;
+        _gameManager     = gameManager;
+        _audioManager    = audioManager;
+    }
+
+    /// <summary>Apply scroll and scoring settings from LaneManager.</summary>
+    public void ApplySettings(int beatsToReach, float fallbackHitWindow,
+                              int perfect, int good, int ok,
+                              float perfectWin, float goodWin)
+    {
+        beatsToReachTiming    = beatsToReach;
+        fallbackHitWindowBeats = fallbackHitWindow;
+        perfectPoints         = perfect;
+        goodPoints            = good;
+        okPoints              = ok;
+        perfectWindow         = perfectWin;
+        goodWindow            = goodWin;
+    }
+
+    // ── Public API ──────────────────────────────────────────────────────
+
+    public void StartScrolling(SymbolInstance[] sequence, int startBeat = -1)
+    {
+        _sequence       = sequence;
+        _nextSpawnIndex = 0;
+        _resolvedCount  = 0;
+        _running        = true;
+        _paused         = false;
+
+        ClearAllTiles();
+        CalculateLayout();
+
+        if (startBeat >= 0)
         {
-            Debug.LogWarning("[SymbolScroller] No sequence to play.");
-            return;
+            _startBeat = startBeat;
+        }
+        else if (_audioManager != null)
+        {
+            _startBeat = _audioManager.CurrentBeat + 1 + beatsToReachTiming;
+        }
+        else
+        {
+            _startBeat = beatsToReachTiming;
         }
 
-        _sequence     = round.sequence;
-        _currentIndex = 0;
-        _running      = true;
-        _activeHit    = false;
+        // Count non-null symbols and pre-resolve nulls
+        int actualSymbols = 0;
+        for (int i = 0; i < _sequence.Length; i++)
+        {
+            if (_sequence[i] != null)
+                actualSymbols++;
+            else
+                _resolvedCount++; // null = no symbol on this beat, auto-resolve
+        }
 
-        Debug.Log($"[SymbolScroller] Starting with {_sequence.Length} symbols, {beatInterval}s per beat");
-
-        _hitCooldown     = 0f;
-        _indicatorFrozen = false;
-
-        ClearAll();
-        ShowActive();
-        CreateIndicator();
-        RefreshQueue();
+        Debug.Log($"[SymbolScroller] Lane {LaneIndex}: {actualSymbols} symbols across {_sequence.Length} beats, " +
+                  $"startBeat={_startBeat}, hitWindow={_hitWindowBeats:F2} beats");
     }
 
     public void StopScrolling()
     {
         _running = false;
-        ClearAll();
+        ClearAllTiles();
     }
 
-    public void SetPaused(bool paused)
+    public void SetPaused(bool paused) => _paused = paused;
+
+    // ── Input (called by LaneManager) ───────────────────────────────────
+
+    public void HandleScratchInput(int playerId, float velocity)
     {
-        _paused = paused;
+        if (!_running || _paused) return;
+        if (Mathf.Abs(velocity) < scratchVelocityThreshold) return;
+
+        var symbolType = velocity > 0 ? SymbolType.ScratchPad_DOWN : SymbolType.ScratchPad_UP;
+        TryHit(playerId, symbolType);
     }
 
-    // ── Input ─────────────────────────────────────────────────────────────
-
-    void OnEnable()
+    public void HandleButtonInput(int playerId, SymbolType symbolType)
     {
-        InputReceiver.OnButtonInput  += HandleButtonInput;
-        InputReceiver.OnScratchInput += HandleScratchInput;
+        if (!_running || _paused) return;
+        TryHit(playerId, symbolType);
     }
 
-    void OnDisable()
+    // ── Hit logic ───────────────────────────────────────────────────────
+
+    private void TryHit(int playerId, SymbolType inputSymbol)
     {
-        InputReceiver.OnButtonInput  -= HandleButtonInput;
-        InputReceiver.OnScratchInput -= HandleScratchInput;
-    }
+        float currentBeatF = GetCurrentBeatFractional();
 
-    private Player ResolvePlayer(string playerField)
-    {
-        if (int.TryParse(playerField, out int id))
-            return lobbyManager?.Lobby.GetPlayerById(id);
-        return lobbyManager?.Lobby.GetPlayer(playerField);
-    }
+        // Find the closest unresolved symbol that is inside the timing zone
+        SymbolTile bestTile = null;
+        float bestDist = float.MaxValue;
 
-    private void HandleButtonInput(ButtonInputEvent e)
-    {
-        if (!_running || _paused || _activeHit || _hitCooldown > 0f) return;
-        if (e.state != ButtonState.Press) return;
-
-        var player = ResolvePlayer(e.player);
-        if (player == null) return;
-
-        var symbolType = e.button == "button1" ? player.button1Symbol : player.button2Symbol;
-        TryHitActive(player.id, symbolType);
-    }
-
-    private void HandleScratchInput(ScratchInputEvent e)
-    {
-        if (!_running || _paused || _activeHit || _hitCooldown > 0f) return;
-        if (Mathf.Abs(e.velocity) < scratchVelocityThreshold) return;
-
-        var player = ResolvePlayer(e.player);
-        if (player == null) return;
-
-        var symbolType = e.velocity > 0 ? SymbolType.ScratchPad_DOWN : SymbolType.ScratchPad_UP;
-        TryHitActive(player.id, symbolType);
-    }
-
-    private void TryHitActive(int playerId, SymbolType expectedSymbol)
-    {
-        if (_currentIndex >= _sequence.Length) return;
-
-        var active = _sequence[_currentIndex];
-
-        // Wrong player — ignore (not their turn)
-        if (active.playerId != playerId) return;
-
-        // Right player, wrong input — penalize
-        if (active.symbolType != expectedSymbol)
+        foreach (var tile in _tiles)
         {
-            Debug.Log($"[SymbolScroller] WRONG input from player {playerId}: expected {active.symbolType}, got {expectedSymbol}");
-            OnWrongInput?.Invoke();
+            if (tile.resolved) continue;
+
+            float targetBeat = _startBeat + tile.sequenceIndex;
+            float beatsFromCenter = Mathf.Abs(currentBeatF - targetBeat);
+
+            if (beatsFromCenter <= _hitWindowBeats && beatsFromCenter < bestDist)
+            {
+                bestDist = beatsFromCenter;
+                bestTile = tile;
+            }
+        }
+
+        if (bestTile == null)
+        {
+            Debug.Log($"[SymbolScroller] Lane {LaneIndex}: input from player {playerId} but no symbol in timing zone (beat={currentBeatF:F2})");
             return;
         }
 
-        _activeHit = true;
+        var active = _sequence[bestTile.sequenceIndex];
+        bestTile.resolved = true;
+        _resolvedCount++;
 
-        // Calculate timing score based on how close to center of the beat
-        int points = CalculateTimingPoints();
-        string rating = GetTimingRating();
-        OnTimingScored?.Invoke(points);
+        if (active.symbolType != inputSymbol)
+        {
+            Debug.Log($"[SymbolScroller] Lane {LaneIndex}: WRONG from player {playerId}: expected {active.symbolType}, got {inputSymbol}");
+            OnWrongInput?.Invoke();
+            OnSymbolResolved?.Invoke(active, false);
+            OnTimingScored?.Invoke(0);
+            StartCoroutine(WrongHitAnimation(bestTile));
+        }
+        else
+        {
+            int points = CalculateTimingPoints(bestDist);
+            OnTimingScored?.Invoke(points);
 
-        // Freeze the indicator at its current position
-        _indicatorFrozen = true;
+            if (_gameManager != null)
+                _gameManager.ScoreData.score += points;
 
-        // Apply points to score data
-        gameManager.ScoreData.score += points;
+            Debug.Log($"[SymbolScroller] Lane {LaneIndex}: HIT by player {playerId}! dist={bestDist:F3} beats, points={points}");
+            OnSymbolResolved?.Invoke(active, true);
+            StartCoroutine(CorrectHitAnimation(bestTile));
+        }
 
-        // Send score to the player's phone
-        if (lobbyManager != null)
-            lobbyManager.SendScoreUpdate(playerId, gameManager.ScoreData.score, points, rating);
-
-        Debug.Log($"[SymbolScroller] HIT! timing={_timer / beatInterval:P0} points={points} rating={rating}");
-
-        OnSymbolResolved?.Invoke(active, true);
-        AdvanceSymbol();
+        CheckSequenceComplete();
     }
 
-    /// <summary>
-    /// Returns points based on how close _timer is to the center of the beat.
-    /// Center = beatInterval * 0.5 is "perfect". The further away, the fewer points.
-    /// </summary>
-    private int CalculateTimingPoints()
+    private int CalculateTimingPoints(float beatsFromCenter)
     {
-        // Normalize timer to 0..1 range within the beat
-        float progress = Mathf.Clamp01(_timer / beatInterval);
-        // Distance from center (0 = perfect, 0.5 = worst)
-        float distFromCenter = Mathf.Abs(progress - 0.5f);
+        float normalized = _hitWindowBeats > 0 ? beatsFromCenter / _hitWindowBeats : 1f;
 
-        if (distFromCenter <= perfectWindow)
-            return perfectPoints;
-        if (distFromCenter <= goodWindow)
-            return goodPoints;
+        if (normalized <= perfectWindow) return perfectPoints;
+        if (normalized <= goodWindow)    return goodPoints;
         return okPoints;
     }
 
-    private string GetTimingRating()
-    {
-        float progress = Mathf.Clamp01(_timer / beatInterval);
-        float distFromCenter = Mathf.Abs(progress - 0.5f);
+    // ── Hit animations ──────────────────────────────────────────────────
 
-        if (distFromCenter <= perfectWindow) return "perfect";
-        if (distFromCenter <= goodWindow)    return "good";
-        return "ok";
+    private IEnumerator CorrectHitAnimation(SymbolTile tile)
+    {
+        Vector3 startScale = tile.rt.localScale;
+        Vector3 targetScale = startScale * correctScaleMultiplier;
+        Color startColor = tile.img != null ? tile.img.color : Color.white;
+
+        float elapsed = 0f;
+        while (elapsed < correctFadeDuration)
+        {
+            if (tile.go == null) yield break;
+
+            elapsed += Time.deltaTime;
+            float t = elapsed / correctFadeDuration;
+
+            tile.rt.localScale = Vector3.Lerp(startScale, targetScale, t);
+
+            if (tile.img != null)
+            {
+                var c = startColor;
+                c.a = Mathf.Lerp(1f, 0f, t);
+                tile.img.color = c;
+            }
+
+            yield return null;
+        }
+
+        DestroyTile(tile);
     }
 
-    // ── Update ────────────────────────────────────────────────────────────
+    private IEnumerator WrongHitAnimation(SymbolTile tile)
+    {
+        if (tile.img != null)
+            tile.img.color = Color.red;
+
+        float elapsed = 0f;
+        while (elapsed < wrongFadeDuration)
+        {
+            if (tile.go == null) yield break;
+
+            elapsed += Time.deltaTime;
+            float t = elapsed / wrongFadeDuration;
+
+            if (tile.img != null)
+            {
+                var c = Color.red;
+                c.a = Mathf.Lerp(1f, 0f, t);
+                tile.img.color = c;
+            }
+
+            yield return null;
+        }
+
+        DestroyTile(tile);
+    }
+
+    private void DestroyTile(SymbolTile tile)
+    {
+        if (tile.go != null)
+            Destroy(tile.go);
+        _tiles.Remove(tile);
+    }
+
+    // ── Update ──────────────────────────────────────────────────────────
 
     void Update()
     {
         if (!_running || _paused) return;
 
-        // Tick down hit cooldown
-        if (_hitCooldown > 0f)
+        if (_layoutDirty)
         {
-            _hitCooldown -= Time.deltaTime;
-            if (_hitCooldown < 0f) _hitCooldown = 0f;
+            CalculateLayout();
+            if (_layoutDirty) return;
         }
 
-        if (_currentIndex >= _sequence.Length) return;
+        float currentBeatF = GetCurrentBeatFractional();
 
-        _timer += Time.deltaTime;
+        SpawnUpcomingTiles(currentBeatF);
 
-        // Rotate indicator around the active frame
-        if (!_indicatorFrozen)
-            UpdateIndicatorPosition();
-
-        if (_timer >= beatInterval)
+        // Position tiles and detect misses
+        for (int i = _tiles.Count - 1; i >= 0; i--)
         {
-            // Time ran out — miss
-            if (!_activeHit)
+            var tile = _tiles[i];
+            float targetBeat = _startBeat + tile.sequenceIndex;
+            float beatsUntilArrival = targetBeat - currentBeatF;
+            float xPos = _timingX + beatsUntilArrival * _pixelsPerBeat;
+
+            // Resolved tiles (animating) — still move but don't check for miss
+            tile.rt.anchoredPosition = new Vector2(xPos, 0f);
+
+            if (xPos < _destroyX)
             {
-                OnSymbolResolved?.Invoke(_sequence[_currentIndex], false);
-                OnTimingScored?.Invoke(0);
+                if (!tile.resolved)
+                {
+                    tile.resolved = true;
+                    _resolvedCount++;
+                    var sym = _sequence[tile.sequenceIndex];
+                    if (sym != null)
+                    {
+                        OnSymbolResolved?.Invoke(sym, false);
+                        OnTimingScored?.Invoke(0);
+                    }
+                }
+                Destroy(tile.go);
+                _tiles.RemoveAt(i);
+                CheckSequenceComplete();
+                continue;
             }
 
-            AdvanceSymbol();
+            if (!tile.resolved)
+            {
+                float beatsPast = currentBeatF - targetBeat;
+                if (beatsPast > _hitWindowBeats)
+                {
+                    tile.resolved = true;
+                    _resolvedCount++;
+                    var sym = _sequence[tile.sequenceIndex];
+                    if (sym != null)
+                    {
+                        OnSymbolResolved?.Invoke(sym, false);
+                        OnTimingScored?.Invoke(0);
+                    }
+                    CheckSequenceComplete();
+                }
+            }
         }
     }
 
-    // ── Symbol management ─────────────────────────────────────────────────
-
-    private void AdvanceSymbol()
+    private float GetCurrentBeatFractional()
     {
-        _currentIndex++;
-        _timer          = 0f;
-        _activeHit      = false;
-        _hitCooldown    = HIT_COOLDOWN_DURATION;
-        _indicatorFrozen = false;
+        if (_audioManager == null) return 0f;
 
-        if (_currentIndex >= _sequence.Length)
+        double elapsed = AudioSettings.dspTime - _audioManager.MusicStartDspTime;
+        if (elapsed < 0) return 0f;
+        return (float)(elapsed / SecPerBeat);
+    }
+
+    private void CheckSequenceComplete()
+    {
+        if (_sequence != null && _resolvedCount >= _sequence.Length)
         {
             _running = false;
-            ClearAll();
-            Debug.Log("[SymbolScroller] Sequence complete.");
+            Debug.Log($"[SymbolScroller] Lane {LaneIndex}: sequence complete.");
             OnSequenceComplete?.Invoke();
+        }
+    }
+
+    // ── Layout calculation ──────────────────────────────────────────────
+
+    private void CalculateLayout()
+    {
+        if (_scrollArea == null) return;
+
+        float areaWidth = _scrollArea.rect.width;
+
+        if (areaWidth <= 0f)
+        {
+            _layoutDirty = true;
             return;
         }
+        _layoutDirty = false;
 
-        ShowActive();
-        CreateIndicator();
-        RefreshQueue();
-    }
-
-    private void ShowActive()
-    {
-        if (_activeGO != null)
-            Destroy(_activeGO);
-
-        var instance = _sequence[_currentIndex];
-
-        _activeGO  = Instantiate(symbolPrefab, activeSlot);
-        _activeImg = _activeGO.GetComponent<Image>();
-        var rt     = _activeGO.GetComponent<RectTransform>();
-
-        rt.anchorMin        = Vector2.zero;
-        rt.anchorMax        = Vector2.one;
-        rt.offsetMin        = Vector2.zero;
-        rt.offsetMax        = Vector2.zero;
-
-        var sprite = gameManager.GetSprite(instance.symbolType);
-        if (sprite != null)
-            _activeImg.sprite = sprite;
-
-        _activeImg.color = instance.color;
-    }
-
-    private void RefreshQueue()
-    {
-        // Destroy old queue tiles
-        foreach (var (go, _) in _queueTiles)
-            if (go != null) Destroy(go);
-        _queueTiles.Clear();
-
-        // Populate upcoming
-        int start = _currentIndex + 1;
-        int end   = Mathf.Min(start + visibleQueueSize, _sequence.Length);
-
-        for (int i = start; i < end; i++)
+        if (_timingZoneRT != null)
         {
-            var instance = _sequence[i];
-
-            var go  = Instantiate(symbolPrefab, queueParent);
-            var rt  = go.GetComponent<RectTransform>();
-            var img = go.GetComponent<Image>();
-
-            rt.sizeDelta = new Vector2(128f, 128f);
-
-            var sprite = gameManager.GetSprite(instance.symbolType);
-            if (sprite != null)
-                img.sprite = sprite;
-
-            img.color = instance.color;
-
-            _queueTiles.Add((go, img));
+            // Convert timing zone center to scroll area local space (center-origin),
+            // matching the coordinate space symbols use (anchors at 0.5, 0.5).
+            Vector3 timingWorldPos = _timingZoneRT.position;
+            Vector3 localPos = _scrollArea.InverseTransformPoint(timingWorldPos);
+            _timingX = localPos.x;
+            _timingHalfWidth = _timingZoneRT.rect.width * 0.5f;
         }
-    }
-
-    // ── Timing indicator ────────────────────────────────────────────────
-
-    /// <summary>
-    /// Creates a small circular dot that orbits the active slot to show timing.
-    /// The dot starts at the top and rotates clockwise 360° over one beatInterval.
-    /// </summary>
-    private void CreateIndicator()
-    {
-        DestroyIndicator();
-
-        _indicatorGO = new GameObject("TimingIndicator");
-        _indicatorRT = _indicatorGO.AddComponent<RectTransform>();
-        _indicatorImg = _indicatorGO.AddComponent<Image>();
-
-        // Parent to activeSlot so it moves with it but render on top
-        _indicatorRT.SetParent(activeSlot, false);
-
-        // Make a circular dot
-        _indicatorRT.sizeDelta = new Vector2(indicatorSize, indicatorSize);
-        _indicatorImg.color = indicatorColor;
-
-        // Start at top center
-        _indicatorRT.anchorMin = new Vector2(0.5f, 0.5f);
-        _indicatorRT.anchorMax = new Vector2(0.5f, 0.5f);
-
-        _indicatorFrozen = false;
-        UpdateIndicatorPosition();
-    }
-
-    /// <summary>
-    /// Positions the indicator dot along a rectangular path around the active slot edge.
-    /// Progress 0→1 maps to a full clockwise orbit starting from top-center.
-    /// </summary>
-    private void UpdateIndicatorPosition()
-    {
-        if (_indicatorRT == null || activeSlot == null) return;
-
-        float progress = Mathf.Clamp01(_timer / beatInterval);
-
-        // Orbit as a circle around the center of the active slot
-        float halfW = activeSlot.rect.width  * 0.5f + indicatorOrbitPadding;
-        float halfH = activeSlot.rect.height * 0.5f + indicatorOrbitPadding;
-
-        // Start at top (π/2), move clockwise (subtract full rotation over progress)
-        float angle = Mathf.PI * 0.5f - progress * Mathf.PI * 2f;
-        float x = Mathf.Cos(angle) * halfW;
-        float y = Mathf.Sin(angle) * halfH;
-
-        _indicatorRT.anchoredPosition = new Vector2(x, y);
-
-        // Color feedback: green near center of beat, yellow further, red at edges
-        float distFromCenter = Mathf.Abs(progress - 0.5f);
-        if (distFromCenter <= perfectWindow)
-            _indicatorImg.color = Color.green;
-        else if (distFromCenter <= goodWindow)
-            _indicatorImg.color = Color.yellow;
         else
-            _indicatorImg.color = indicatorColor;
+        {
+            _timingX = -areaWidth * 0.5f + symbolSize;
+            _timingHalfWidth = 0f;
+        }
+
+        _spawnX = areaWidth * 0.5f;
+        _destroyX = -areaWidth * 0.5f - symbolSize;
+
+        float travelDist = _spawnX - _timingX;
+        _pixelsPerBeat = travelDist / beatsToReachTiming;
+
+        if (_timingHalfWidth > 0f && _pixelsPerBeat > 0f)
+            _hitWindowBeats = _timingHalfWidth / _pixelsPerBeat;
+        else
+            _hitWindowBeats = fallbackHitWindowBeats;
+
+        Debug.Log($"[SymbolScroller] Lane {LaneIndex}: timingX={_timingX:F0}, zoneWidth={_timingHalfWidth * 2:F0}px, " +
+                  $"hitWindow={_hitWindowBeats:F2} beats, {_pixelsPerBeat:F0}px/beat");
+
+        if (_scrollArea.GetComponent<RectMask2D>() == null)
+            _scrollArea.gameObject.AddComponent<RectMask2D>();
     }
 
-    private void DestroyIndicator()
+    // ── Tile spawning ───────────────────────────────────────────────────
+
+    private void SpawnUpcomingTiles(float currentBeatF)
     {
-        if (_indicatorGO != null)
+        if (_symbolContainer == null || _symbolPrefab == null) return;
+
+        while (_nextSpawnIndex < _sequence.Length)
         {
-            Destroy(_indicatorGO);
-            _indicatorGO  = null;
-            _indicatorRT  = null;
-            _indicatorImg = null;
+            // Skip null entries (empty beats for this lane)
+            if (_sequence[_nextSpawnIndex] == null)
+            {
+                _nextSpawnIndex++;
+                continue;
+            }
+
+            float targetBeat = _startBeat + _nextSpawnIndex;
+            float beatsUntilArrival = targetBeat - currentBeatF;
+            float xPos = _timingX + beatsUntilArrival * _pixelsPerBeat;
+
+            if (xPos > _spawnX + symbolSize)
+                break;
+
+            SpawnTile(_nextSpawnIndex, xPos);
+            _nextSpawnIndex++;
         }
     }
 
-    private void ClearAll()
+    private void SpawnTile(int index, float xPos)
     {
-        if (_activeGO != null)
+        var instance = _sequence[index];
+
+        var go = Instantiate(_symbolPrefab, _symbolContainer);
+        var rt = go.GetComponent<RectTransform>();
+        var img = go.GetComponent<Image>();
+
+        rt.anchorMin = new Vector2(0.5f, 0.5f);
+        rt.anchorMax = new Vector2(0.5f, 0.5f);
+        rt.sizeDelta = new Vector2(symbolSize, symbolSize);
+        rt.anchoredPosition = new Vector2(xPos, 0f);
+
+        var sprite = _gameManager?.GetSprite(instance.symbolType);
+        if (sprite != null && img != null) img.sprite = sprite;
+        if (img != null) img.color = instance.color;
+
+        _tiles.Add(new SymbolTile
         {
-            Destroy(_activeGO);
-            _activeGO  = null;
-            _activeImg = null;
-        }
+            go = go,
+            rt = rt,
+            img = img,
+            sequenceIndex = index,
+            resolved = false
+        });
+    }
 
-        DestroyIndicator();
+    // ── Cleanup ─────────────────────────────────────────────────────────
 
-        foreach (var (go, _) in _queueTiles)
-            if (go != null) Destroy(go);
-        _queueTiles.Clear();
+    private void ClearAllTiles()
+    {
+        StopAllCoroutines();
+        foreach (var tile in _tiles)
+            if (tile.go != null) Destroy(tile.go);
+        _tiles.Clear();
+    }
+
+    // ── Debug visualization ─────────────────────────────────────────────
+
+    void OnGUI()
+    {
+        if (!showTimingDebug || !_running || _scrollArea == null) return;
+
+        // Get the canvas so we can convert local positions to screen positions
+        var canvas = _scrollArea.GetComponentInParent<Canvas>();
+        if (canvas == null) return;
+        var cam = canvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : canvas.worldCamera;
+
+        // Timing zone center line (green)
+        Vector2 centerLocal = new Vector2(_timingX, 0f);
+        Vector3 centerWorld = _scrollArea.TransformPoint(centerLocal);
+        Vector2 centerScreen = RectTransformUtility.WorldToScreenPoint(cam, centerWorld);
+        // Flip Y for OnGUI (screen space is bottom-up, GUI is top-down)
+        float centerScreenY = Screen.height - centerScreen.y;
+
+        // Left edge of timing zone (yellow)
+        float leftX = _timingX - _hitWindowBeats * _pixelsPerBeat;
+        Vector3 leftWorld = _scrollArea.TransformPoint(new Vector2(leftX, 0f));
+        Vector2 leftScreen = RectTransformUtility.WorldToScreenPoint(cam, leftWorld);
+        float leftScreenX = leftScreen.x;
+
+        // Right edge of timing zone (yellow)
+        float rightX = _timingX + _hitWindowBeats * _pixelsPerBeat;
+        Vector3 rightWorld = _scrollArea.TransformPoint(new Vector2(rightX, 0f));
+        Vector2 rightScreen = RectTransformUtility.WorldToScreenPoint(cam, rightWorld);
+        float rightScreenX = rightScreen.x;
+
+        // Get lane vertical bounds
+        float laneTop = centerScreen.y - _scrollArea.rect.height * 0.5f;
+        float laneBottom = centerScreen.y + _scrollArea.rect.height * 0.5f;
+        float laneTopGUI = Screen.height - laneBottom;
+        float laneBottomGUI = Screen.height - laneTop;
+        float laneHeight = laneBottomGUI - laneTopGUI;
+
+        // Draw hit window zone (semi-transparent yellow)
+        var zoneRect = new Rect(leftScreenX, laneTopGUI, rightScreenX - leftScreenX, laneHeight);
+        var prevColor = GUI.color;
+        GUI.color = new Color(1f, 1f, 0f, 0.15f);
+        GUI.DrawTexture(zoneRect, Texture2D.whiteTexture);
+
+        // Draw left/right edges (yellow lines)
+        GUI.color = new Color(1f, 1f, 0f, 0.8f);
+        GUI.DrawTexture(new Rect(leftScreenX - 1, laneTopGUI, 2, laneHeight), Texture2D.whiteTexture);
+        GUI.DrawTexture(new Rect(rightScreenX - 1, laneTopGUI, 2, laneHeight), Texture2D.whiteTexture);
+
+        // Draw center line (green)
+        GUI.color = new Color(0f, 1f, 0f, 0.8f);
+        GUI.DrawTexture(new Rect(centerScreen.x - 1, laneTopGUI, 2, laneHeight), Texture2D.whiteTexture);
+
+        // Draw perfect zone (cyan, inner area)
+        float perfectPixels = perfectWindow * _hitWindowBeats * _pixelsPerBeat;
+        float perfectLeftX = _timingX - perfectPixels;
+        float perfectRightX = _timingX + perfectPixels;
+        Vector3 pLeftWorld = _scrollArea.TransformPoint(new Vector2(perfectLeftX, 0f));
+        Vector3 pRightWorld = _scrollArea.TransformPoint(new Vector2(perfectRightX, 0f));
+        Vector2 pLeftScreen = RectTransformUtility.WorldToScreenPoint(cam, pLeftWorld);
+        Vector2 pRightScreen = RectTransformUtility.WorldToScreenPoint(cam, pRightWorld);
+        GUI.color = new Color(0f, 1f, 1f, 0.15f);
+        GUI.DrawTexture(new Rect(pLeftScreen.x, laneTopGUI, pRightScreen.x - pLeftScreen.x, laneHeight), Texture2D.whiteTexture);
+
+        // Label
+        GUI.color = Color.white;
+        GUI.Label(new Rect(leftScreenX, laneTopGUI - 18, 200, 20),
+            $"L{LaneIndex}: {_hitWindowBeats:F2}b window");
+
+        GUI.color = prevColor;
     }
 }

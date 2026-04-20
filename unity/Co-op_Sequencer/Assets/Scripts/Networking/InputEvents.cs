@@ -46,3 +46,29 @@ public readonly struct ScratchInputEvent
         this.velocity = velocity;
     }
 }
+
+/// <summary>Direction of a lane-switch slider gesture.</summary>
+public enum SliderDirection
+{
+    Up,
+    Down
+}
+
+/// <summary>
+/// Typed event raised when a player swipes the DJ slider to switch lane.
+/// Game logic subscribes to InputReceiver.OnSliderInput to receive these.
+/// </summary>
+public readonly struct SliderInputEvent
+{
+    /// <summary>ClientId of the player who triggered this input.</summary>
+    public readonly string player;
+
+    /// <summary>Direction the player swiped.</summary>
+    public readonly SliderDirection direction;
+
+    public SliderInputEvent(string player, SliderDirection direction)
+    {
+        this.player    = player;
+        this.direction = direction;
+    }
+}
