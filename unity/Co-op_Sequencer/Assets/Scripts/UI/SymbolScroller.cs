@@ -62,6 +62,15 @@ public class SymbolScroller : MonoBehaviour
     private float _pixelsPerBeat;
     private bool _layoutDirty;
 
+    /// <summary>Fired on a successful hit with the points earned (0 for miss).</summary>
+    public event Action<int> OnTimingScored;
+
+    /// <summary>Fired when the correct player presses the wrong button/scratch direction.</summary>
+    public event Action OnWrongInput;
+
+    /// <summary>Fired when the entire sequence has been completed.</summary>
+    public event Action OnSequenceComplete;
+
     // State
     private SymbolInstance[] _sequence;
     private int   _nextSpawnIndex;

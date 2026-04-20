@@ -138,4 +138,16 @@ namespace CoopSequencer.Networking
         public int    lastHitPoints; // points from the most recent hit (0 = miss)
         public string rating;       // "perfect", "good", "ok", or "miss"
     }
+
+    // Sent from Unity to the phone when the player's score changes.
+    // {"type":"score_update","playerId":0,"score":350,"lastHitPoints":100,"rating":"perfect"}
+    [Serializable]
+    public class ScoreUpdateMessage
+    {
+        public string type          = "score_update";
+        public int    playerId;
+        public int    score;         // cumulative score
+        public int    lastHitPoints; // points from the most recent hit (0 = miss)
+        public string rating;       // "perfect", "good", "ok", or "miss"
+    }
 }

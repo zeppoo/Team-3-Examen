@@ -207,6 +207,9 @@
 						draggable="false"
 					/>
 			</div>
+			{#if ws.lastRating}
+				<div class="screen-rating {ws.lastRating}">{ws.lastRating.toUpperCase()}</div>
+			{/if}
 		</div>
 	</div>
 
@@ -419,6 +422,28 @@
 	/* Flipped layout: reverse the order */
 	.root.flipped {
 		flex-direction: row-reverse;
+	}
+
+	.screen-rating {
+		font-family: monospace;
+		font-size: 0.65rem;
+		font-weight: 700;
+		letter-spacing: 0.15em;
+		text-align: center;
+		text-transform: uppercase;
+		padding: 2px 0;
+		animation: rating-flash 0.6s ease-out;
+	}
+
+	.screen-rating.perfect { color: #22c55e; text-shadow: 0 0 8px #22c55e88; }
+	.screen-rating.good    { color: #eab308; text-shadow: 0 0 8px #eab30888; }
+	.screen-rating.ok      { color: #f97316; text-shadow: 0 0 8px #f9731688; }
+	.screen-rating.miss    { color: #ef4444; text-shadow: 0 0 8px #ef444488; }
+
+	@keyframes rating-flash {
+		0%   { opacity: 0; transform: scale(1.4); }
+		30%  { opacity: 1; transform: scale(1); }
+		100% { opacity: 0.7; transform: scale(1); }
 	}
 
 	/* ── Scratch area ── */

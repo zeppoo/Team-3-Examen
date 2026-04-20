@@ -19,6 +19,11 @@ public class GameStarter : MonoBehaviour
     [SerializeField] private float displayDuration = 1.5f;
     [SerializeField] private float fadeDuration    = 0.5f;
 
+    [Header("Announcement")]
+    [SerializeField] private TMP_Text announcementText;
+    [SerializeField] private float displayDuration = 1.5f;
+    [SerializeField] private float fadeDuration    = 0.5f;
+
     [Header("Round Settings")]
     [Tooltip("Total rounds to play. Set to 0 for infinite rounds.")]
     [SerializeField] private int   totalRounds    = 3;
@@ -176,6 +181,34 @@ public class GameStarter : MonoBehaviour
 
         _roundStarted = true;
         laneManager.StartAllLaneSequences(sequences);
+    }
+
+    // ── Announcement helper ──────────────────────────────────────────────
+
+    public void ShowAnnouncement(string message)
+    {
+        if (announcementText != null)
+            StartCoroutine(ShowAnnouncementCoroutine(message));
+    }
+
+    private IEnumerator ShowAnnouncementCoroutine(string message)
+    {
+        announcementText.text  = message;
+        announcementText.alpha = 1f;
+        announcementText.gameObject.SetActive(true);
+
+        yield return new WaitForSeconds(displayDuration);
+
+        float elapsed = 0f;
+        while (elapsed < fadeDuration)
+        {
+            elapsed += Time.deltaTime;
+            announcementText.alpha = 1f - (elapsed / fadeDuration);
+            yield return null;
+        }
+
+        announcementText.alpha = 0f;
+        announcementText.gameObject.SetActive(false);
     }
 
     // ── Announcement helper ──────────────────────────────────────────────
