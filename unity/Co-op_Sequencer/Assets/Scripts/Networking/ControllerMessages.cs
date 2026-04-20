@@ -58,16 +58,62 @@ namespace CoopSequencer.Networking
         public string direction; // "up" | "down"
     }
 
+    // {"type":"symbol_select","player":"clientId","symbol":"Guitar","name":"Alex"}
+    // Sent when a player claims an instrument symbol + submits their name.
+    [Serializable]
+    public class SymbolSelectMessage
+    {
+        public string type;    // always "symbol_select"
+        public string player;  // clientId of the player
+        public string symbol;  // "Guitar" | "Drums" | "Trumpet" | "Microphone"
+        public string name;    // chosen display name
+    }
+
+    // {"type":"rejoin","lobbyId":"...","reconnectToken":"..."}
+    // First message a phone sends if it has a stored cookie matching this lobby's id.
+    [Serializable]
+    public class RejoinMessage
+    {
+        public string type;            // always "rejoin"
+        public string lobbyId;         // must match LobbyManager.LobbyId
+        public string reconnectToken;  // token handed out in the previous player_assigned
+    }
+
     // ─── Server → Client messages ────────────────────────────────────────
 
-    // Sent from Unity to the phone immediately after it joins.
-    // {"type":"player_assigned","playerId":0,"color":"#E74C3C"}
+    // Sent from Unity to the phone immediately after it joins, and again
+    // after a symbol is successfully claimed (with symbol + name set).
+    // {"type":"player_assigned","playerId":0,"color":"#E74C3C","symbol":"Guitar","name":"Alex"}
     [Serializable]
     public class PlayerAssignedMessage
     {
         public string type    = "player_assigned";
         public int    playerId;
-        public string color;  // hex, e.g. "#E74C3C"
+        public string color;          // hex, e.g. "#E74C3C"
+        public string symbol;         // instrument symbol name (empty until claimed)
+        public string name;           // chosen display name (empty until claimed)
+        public string lobbyId;        // id of this lobby instance (for cookie matching)
+        public string reconnectToken; // opaque token; phone stores it to rejoin this slot
+    }
+
+    // Broadcast to all clients when the set of available/taken symbols changes.
+    // {"type":"symbols_update","available":["Guitar","Drums"],"taken":["Trumpet","Microphone"]}
+    [Serializable]
+    public class SymbolsUpdateMessage
+    {
+        public string   type      = "symbols_update";
+        public string[] available;
+        public string[] taken;
+    }
+
+    // Sent to a single client when their symbol_select was rejected.
+    // {"type":"symbol_rejected","symbol":"Guitar","reason":"taken"}
+    [Serializable]
+    public class SymbolRejectedMessage
+    {
+        public string type   = "symbol_rejected";
+        public string symbol;
+        public string reason; // "taken" | other
     }
 
     // Sent from Unity when a player's lane changes.

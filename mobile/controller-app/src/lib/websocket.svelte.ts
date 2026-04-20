@@ -1,11 +1,50 @@
 import { logger } from './logger.svelte';
-import type { ControllerMessage, ServerMessage } from './messages';
+import type { ControllerMessage, ServerMessage, SymbolType } from './messages';
+import { ALL_SYMBOLS, rejoinMessage } from './messages';
+
+// ── Reconnect cookie (1h TTL) ────────────────────────────────────────────
+// Keyed per lobbyId so scanning a different lobby doesn't try to reuse a token.
+const COOKIE_KEY = 'controller-reconnect-v1';
+const COOKIE_TTL_MS = 60 * 60 * 1000; // 1 hour
+
+interface ReconnectCookie {
+	lobbyId: string;
+	reconnectToken: string;
+	expiresAt: number; // epoch ms
+}
+
+function loadCookie(lobbyId: string): ReconnectCookie | null {
+	if (typeof localStorage === 'undefined') return null;
+	try {
+		const raw = localStorage.getItem(COOKIE_KEY);
+		if (!raw) return null;
+		const c = JSON.parse(raw) as ReconnectCookie;
+		if (c.lobbyId !== lobbyId) return null;
+		if (Date.now() > c.expiresAt) {
+			localStorage.removeItem(COOKIE_KEY);
+			return null;
+		}
+		return c;
+	} catch {
+		return null;
+	}
+}
+
+function saveCookie(c: ReconnectCookie) {
+	if (typeof localStorage === 'undefined') return;
+	try { localStorage.setItem(COOKIE_KEY, JSON.stringify(c)); } catch { /* ignore */ }
+}
+
+function clearCookie() {
+	if (typeof localStorage === 'undefined') return;
+	try { localStorage.removeItem(COOKIE_KEY); } catch { /* ignore */ }
+}
 
 type ConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'error';
 
 interface WebSocketStore {
 	readonly status: ConnectionStatus;
-	readonly lobbyInfo: { ip: string; port: number; lobby: string } | null;
+	readonly lobbyInfo: { ip: string; port: number; lobby: string; lobbyId?: string } | null;
 	readonly lastError: ServerMessage | null;
 	readonly playerId: string | null;
 	readonly playerColor: string | null;
@@ -14,7 +53,15 @@ interface WebSocketStore {
 	readonly score: number;
 	readonly lastHitPoints: number | null;
 	readonly lastRating: string | null;
-	connect(ip: string, port: number, lobby: string): Promise<boolean>;
+	readonly availableSymbols: SymbolType[];
+	readonly takenSymbols: SymbolType[];
+	readonly playerSymbol: SymbolType | null;
+	readonly playerName: string;
+	readonly lastRejectedSymbol: SymbolType | null;
+	readonly didRejoin: boolean;
+	setPlayerName(name: string): void;
+	clearRejectedSymbol(): void;
+	connect(ip: string, port: number, lobby: string, lobbyId?: string): Promise<boolean>;
 	send(msg: ControllerMessage): void;
 	disconnect(): void;
 	bypassForTesting(): void;
@@ -24,8 +71,10 @@ function createWebSocketStore(): WebSocketStore {
 	let socket: WebSocket | null = null;
 
 	let status = $state<ConnectionStatus>('disconnected');
-	let lobbyInfo = $state<{ ip: string; port: number; lobby: string } | null>(null);
+	let lobbyInfo = $state<{ ip: string; port: number; lobby: string; lobbyId?: string } | null>(null);
 	let lastError = $state<ServerMessage | null>(null);
+	let didRejoin = $state(false);
+	let pendingRejoinToken: string | null = null;
 	let playerId = $state<string | null>(null);
 	let playerColor = $state<string | null>(null);
 	let lane = $state<number>(0);
@@ -33,6 +82,11 @@ function createWebSocketStore(): WebSocketStore {
 	let score = $state<number>(0);
 	let lastHitPoints = $state<number | null>(null);
 	let lastRating = $state<string | null>(null);
+	let availableSymbols = $state<SymbolType[]>([...ALL_SYMBOLS]);
+	let takenSymbols = $state<SymbolType[]>([]);
+	let playerSymbol = $state<SymbolType | null>(null);
+	let playerName = $state<string>('');
+	let lastRejectedSymbol = $state<SymbolType | null>(null);
 
 	let intentionalClose = false;
 	let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
@@ -58,7 +112,7 @@ function createWebSocketStore(): WebSocketStore {
 
 	let _connectResolve: ((ok: boolean) => void) | null = null;
 
-	async function connect(ip: string, port: number, lobby: string, isReconnect = false): Promise<boolean> {
+	async function connect(ip: string, port: number, lobby: string, lobbyId?: string, isReconnect = false): Promise<boolean> {
 		if (socket) {
 			// Detach handlers so the old socket's onclose doesn't trigger reconnect
 			socket.onclose = null;
@@ -72,7 +126,19 @@ function createWebSocketStore(): WebSocketStore {
 		intentionalClose = false;
 		if (!isReconnect) reconnectAttempts = 0;
 		status = 'connecting';
-		lobbyInfo = { ip, port, lobby };
+		lobbyInfo = { ip, port, lobby, lobbyId };
+
+		// If we have a stored token for this lobbyId, try to rejoin on open.
+		pendingRejoinToken = null;
+		didRejoin = false;
+		if (lobbyId) {
+			const cookie = loadCookie(lobbyId);
+			if (cookie) {
+				pendingRejoinToken = cookie.reconnectToken;
+				logger.net(`Found reconnect cookie for lobby ${lobbyId} — will send rejoin on open`);
+			}
+		}
+
 		const result = new Promise<boolean>(res => { _connectResolve = res; });
 
 		// Wait for tunnel to become reachable (both named tunnels and quick tunnels)
@@ -105,6 +171,13 @@ function createWebSocketStore(): WebSocketStore {
 			lastError = null;
 			status = 'connected';
 			reconnectAttempts = 0;
+
+			// Fire the rejoin handshake before anything else.
+			if (pendingRejoinToken && lobbyId) {
+				logger.net(`Sending rejoin for lobbyId=${lobbyId}`);
+				socket?.send(JSON.stringify(rejoinMessage(lobbyId, pendingRejoinToken)));
+			}
+
 			_connectResolve?.(true);
 			_connectResolve = null;
 		};
@@ -116,6 +189,17 @@ function createWebSocketStore(): WebSocketStore {
 				logger.net(`Server message (${e.data.length} chars): ${preview}`);
 
 				if (msg.type === 'error') {
+					// Rejoin failure (stale cookie / lobby mismatch): drop the cookie and
+					// fall back to a fresh join instead of surfacing this as a fatal error.
+					if (typeof msg.reason === 'string' && msg.reason.startsWith('rejoin_')) {
+						logger.warn(`Rejoin rejected (${msg.reason}) — clearing cookie, continuing as new player`);
+						clearCookie();
+						pendingRejoinToken = null;
+						// Unity already treated this as a normal join (placeholder player),
+						// so we just continue — no need to close/reconnect.
+						return;
+					}
+
 					lastError = msg;
 					logger.error(`Server error: ${msg.reason}`);
 					intentionalClose = true; // Don't auto-reconnect on server errors
@@ -123,7 +207,33 @@ function createWebSocketStore(): WebSocketStore {
 				} else if (msg.type === 'player_assigned') {
 					playerId = String(msg.playerId);
 					playerColor = msg.color;
-					logger.net(`Player assigned id=${playerId} color=${msg.color}`);
+					if (msg.symbol) playerSymbol = msg.symbol;
+					if (msg.name) playerName = msg.name;
+
+					// If this assignment came from a rejoin (we asked and got our symbol/name back), flag it.
+					if (pendingRejoinToken && msg.symbol) {
+						didRejoin = true;
+						logger.net(`Rejoin confirmed — restored symbol=${msg.symbol} name=${msg.name ?? ''}`);
+					}
+					pendingRejoinToken = null;
+
+					// Persist the (rotated) token so the next reconnect works.
+					if (msg.lobbyId && msg.reconnectToken) {
+						saveCookie({
+							lobbyId: msg.lobbyId,
+							reconnectToken: msg.reconnectToken,
+							expiresAt: Date.now() + COOKIE_TTL_MS,
+						});
+					}
+
+					logger.net(`Player assigned id=${playerId} color=${msg.color} symbol=${msg.symbol ?? '—'}`);
+				} else if (msg.type === 'symbols_update') {
+					availableSymbols = msg.available;
+					takenSymbols = msg.taken;
+					logger.net(`Symbols update: available=[${msg.available.join(',')}] taken=[${msg.taken.join(',')}]`);
+				} else if (msg.type === 'symbol_rejected') {
+					lastRejectedSymbol = msg.symbol;
+					logger.warn(`Symbol rejected: ${msg.symbol} (${msg.reason})`);
 				} else if (msg.type === 'lane_update') {
 					lane = msg.lane;
 					totalLanes = msg.totalLanes;
@@ -173,7 +283,7 @@ function createWebSocketStore(): WebSocketStore {
 				logger.net(`Auto-reconnect attempt ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS} in ${RECONNECT_DELAY_MS}ms...`);
 				reconnectTimer = setTimeout(() => {
 					if (lobbyInfo) {
-						connect(lobbyInfo.ip, lobbyInfo.port, lobbyInfo.lobby, true);
+						connect(lobbyInfo.ip, lobbyInfo.port, lobbyInfo.lobby, lobbyInfo.lobbyId, true);
 					}
 				}, RECONNECT_DELAY_MS);
 			} else {
@@ -206,6 +316,13 @@ function createWebSocketStore(): WebSocketStore {
 		score = 0;
 		lastHitPoints = null;
 		lastRating = null;
+		availableSymbols = [...ALL_SYMBOLS];
+		takenSymbols = [];
+		playerSymbol = null;
+		playerName = '';
+		lastRejectedSymbol = null;
+		didRejoin = false;
+		pendingRejoinToken = null;
 	}
 
 	function bypassForTesting() {
@@ -224,7 +341,16 @@ function createWebSocketStore(): WebSocketStore {
 		get score() { return score; },
 		get lastHitPoints() { return lastHitPoints; },
 		get lastRating() { return lastRating; },
-		connect: (ip: string, port: number, lobby: string): Promise<boolean> => connect(ip, port, lobby, false),
+		get availableSymbols() { return availableSymbols; },
+		get takenSymbols() { return takenSymbols; },
+		get playerSymbol() { return playerSymbol; },
+		get playerName() { return playerName; },
+		get lastRejectedSymbol() { return lastRejectedSymbol; },
+		get didRejoin() { return didRejoin; },
+		setPlayerName(name: string) { playerName = name; },
+		clearRejectedSymbol() { lastRejectedSymbol = null; },
+		connect: (ip: string, port: number, lobby: string, lobbyId?: string): Promise<boolean> =>
+			connect(ip, port, lobby, lobbyId, false),
 		send,
 		disconnect,
 		bypassForTesting

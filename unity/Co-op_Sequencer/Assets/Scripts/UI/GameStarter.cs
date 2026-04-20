@@ -20,6 +20,7 @@ public class GameStarter : MonoBehaviour
     [SerializeField] private float fadeDuration    = 0.5f;
 
     [Header("Round Settings")]
+    [Tooltip("Total rounds to play. Set to 0 for infinite rounds.")]
     [SerializeField] private int   totalRounds    = 3;
     [SerializeField] private int   sequenceLength = 20;
     [SerializeField] private float delayBetweenRounds = 2f;
@@ -116,7 +117,7 @@ public class GameStarter : MonoBehaviour
     {
         _roundStarted = false;
 
-        if (_currentRound >= totalRounds)
+        if (totalRounds > 0 && _currentRound >= totalRounds)
         {
             Debug.Log("[GameStarter] All rounds complete!");
             StartCoroutine(ShowAnnouncementCoroutine("Game Over!"));

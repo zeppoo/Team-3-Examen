@@ -45,6 +45,11 @@ public class LobbyDisplay : MonoBehaviour
 
     private WebSocketServer _server;
     private CloudflaredTunnel _tunnel;
+    private LobbyManager _lobbyManager;
+
+    /// <summary>Unique ID for this lobby instance. Embedded in the QR so phones
+    /// can detect "same lobby as last time" and attempt a reconnect.</summary>
+    public string LobbyId { get; private set; }
 
     void Awake()
     {
@@ -62,6 +67,15 @@ public class LobbyDisplay : MonoBehaviour
         _tunnel = GetComponent<CloudflaredTunnel>();
         if (_tunnel == null)
             _tunnel = FindFirstObjectByType<CloudflaredTunnel>();
+
+        _lobbyManager = GetComponent<LobbyManager>();
+        if (_lobbyManager == null)
+            _lobbyManager = FindFirstObjectByType<LobbyManager>();
+
+        // Fresh ID every time the game host boots — short + URL-safe.
+        LobbyId = Guid.NewGuid().ToString("N").Substring(0, 12);
+        if (_lobbyManager != null) _lobbyManager.LobbyId = LobbyId;
+        Debug.Log($"[LobbyDisplay] Lobby ID: {LobbyId}");
     }
 
     void Start()
@@ -109,7 +123,7 @@ public class LobbyDisplay : MonoBehaviour
         int    port = advertisedPort > 0 ? advertisedPort : _server.port;
 
         // Payload expected by the mobile app
-        string payload = BuildPayload(ip, port, lobbyName);
+        string payload = BuildPayload(ip, port, lobbyName, LobbyId);
 
         if (ipPortText != null)
             ipPortText.text = $"{ip}:{port}  |  lobby: {lobbyName}";
@@ -140,12 +154,12 @@ public class LobbyDisplay : MonoBehaviour
         }
     }
 
-    private static string BuildPayload(string ip, int port, string lobby)
+    private static string BuildPayload(string ip, int port, string lobby, string lobbyId)
     {
         // Matches what the mobile app's QR scanner expects:
-        // { "ip": "...", "port": ..., "lobby": "..." }
+        // { "ip": "...", "port": ..., "lobby": "...", "lobbyId": "..." }
         // We build it manually to avoid requiring Newtonsoft in Unity
-        return $"{{\"ip\":\"{ip}\",\"port\":{port},\"lobby\":\"{EscapeJson(lobby)}\"}}";
+        return $"{{\"ip\":\"{ip}\",\"port\":{port},\"lobby\":\"{EscapeJson(lobby)}\",\"lobbyId\":\"{EscapeJson(lobbyId)}\"}}";
     }
 
     private static string EscapeJson(string s)

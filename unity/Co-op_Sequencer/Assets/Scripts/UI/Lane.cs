@@ -140,7 +140,7 @@ public class Lane : MonoBehaviour
 
             if (img != null)
             {
-                var iconSprite = gameManager?.GetPlayerIconSprite(player.id);
+                var iconSprite = gameManager?.GetPlayerIconSprite(player);
                 if (iconSprite != null) img.sprite = iconSprite;
 
                 if (ColorUtility.TryParseHtmlString(player.color, out var color))

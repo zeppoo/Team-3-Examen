@@ -5,9 +5,24 @@
 // ─── QR code payload ─────────────────────────────────────────────────────────
 // Encoded by Unity (LobbyDisplay.cs) and decoded by the mobile app on scan.
 export interface LobbyInfo {
-	ip: string;     // host LAN IP, e.g. "10.157.44.122"
-	port: number;   // WebSocket port, e.g. 8080
-	lobby: string;  // lobby name, e.g. "Test-Lobby"
+	ip: string;      // host LAN IP, e.g. "10.157.44.122"
+	port: number;    // WebSocket port, e.g. 8080
+	lobby: string;   // lobby name, e.g. "Test-Lobby"
+	lobbyId?: string; // unique per-boot id, used for reconnect cookies
+}
+
+// Sent as the first message after (re)connecting when the phone has a stored
+// cookie matching this lobby's id. Unity looks up the token and restores the
+// player's slot (id, color, symbol, name).
+// {"type":"rejoin","lobbyId":"...","reconnectToken":"..."}
+export interface RejoinMessage {
+	type: 'rejoin';
+	lobbyId: string;
+	reconnectToken: string;
+}
+
+export function rejoinMessage(lobbyId: string, reconnectToken: string): RejoinMessage {
+	return { type: 'rejoin', lobbyId, reconnectToken };
 }
 
 
@@ -28,8 +43,21 @@ export interface SliderMessage {
 	direction: 'up' | 'down';
 }
 
+// Instrument symbols the player can pick.
+export type SymbolType = 'Guitar' | 'Drums' | 'Trumpet' | 'Microphone';
+export const ALL_SYMBOLS: SymbolType[] = ['Guitar', 'Drums', 'Trumpet', 'Microphone'];
+
+// Sent when the player tries to claim a symbol + submit their name.
+// {"type":"symbol_select","player":"<clientId>","symbol":"Guitar","name":"Alex"}
+export interface SymbolSelectMessage {
+	type: 'symbol_select';
+	player: string;
+	symbol: SymbolType;
+	name: string;
+}
+
 // Union of all messages the controller can send.
-export type ControllerMessage = ScratchMessage | SliderMessage;
+export type ControllerMessage = ScratchMessage | SliderMessage | SymbolSelectMessage | RejoinMessage;
 
 // ─── Server → client messages ─────────────────────────────────────────────────
 
@@ -40,11 +68,31 @@ export interface ErrorMessage {
 }
 
 // Sent by Unity immediately after a player joins, assigning their id and color.
-// {"type":"player_assigned","playerId":0,"color":"#fe0000"}
+// {"type":"player_assigned","playerId":0,"color":"#fe0000","symbol":"Guitar","name":"Alex"}
 export interface PlayerAssignedMessage {
 	type: 'player_assigned';
 	playerId: number;
-	color: string;          // hex, e.g. "#fe0000"
+	color: string;           // hex, e.g. "#fe0000"
+	symbol?: SymbolType;     // set once the player has confirmed their pick
+	name?: string;           // player's chosen display name
+	lobbyId?: string;        // id of the lobby this assignment belongs to
+	reconnectToken?: string; // token the phone stores to rejoin this slot
+}
+
+// Broadcast by Unity whenever the set of available (unclaimed) symbols changes.
+// {"type":"symbols_update","available":["Guitar","Drums"],"taken":["Trumpet","Microphone"]}
+export interface SymbolsUpdateMessage {
+	type: 'symbols_update';
+	available: SymbolType[];
+	taken: SymbolType[];
+}
+
+// Sent by Unity if a symbol claim was rejected (someone else got there first).
+// {"type":"symbol_rejected","symbol":"Guitar","reason":"taken"}
+export interface SymbolRejectedMessage {
+	type: 'symbol_rejected';
+	symbol: SymbolType;
+	reason: string;
 }
 
 // Sent by Unity when a player's lane changes.
@@ -66,7 +114,7 @@ export interface ScoreUpdateMessage {
 	rating: 'perfect' | 'good' | 'ok' | 'miss';
 }
 
-export type ServerMessage = ErrorMessage | PlayerAssignedMessage | LaneUpdateMessage | ScoreUpdateMessage;
+export type ServerMessage = ErrorMessage | PlayerAssignedMessage | LaneUpdateMessage | ScoreUpdateMessage | SymbolsUpdateMessage | SymbolRejectedMessage;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -76,4 +124,8 @@ export function scratchMessage(velocity: number, player: string): ScratchMessage
 
 export function sliderMessage(direction: SliderMessage['direction'], player: string): SliderMessage {
 	return { type: 'slider', player, direction };
+}
+
+export function symbolSelectMessage(symbol: SymbolType, name: string, player: string): SymbolSelectMessage {
+	return { type: 'symbol_select', player, symbol, name };
 }

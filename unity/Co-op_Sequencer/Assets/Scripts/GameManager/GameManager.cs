@@ -121,6 +121,22 @@ public class GameManager : MonoBehaviour
         return playerIconSprites[playerIndex % playerIconSprites.Count];
     }
 
+    /// <summary>
+    /// Returns the icon sprite for a player, preferring their claimed instrument
+    /// symbol. Falls back to the index-based list if no symbol has been claimed
+    /// (or if no sprite is configured for that symbol).
+    /// </summary>
+    public Sprite GetPlayerIconSprite(Player player)
+    {
+        if (player != null && player.hasSymbol)
+        {
+            if (spriteLookup == null) InitializeSpriteLookup();
+            if (spriteLookup.TryGetValue(player.symbol, out var sprite) && sprite != null)
+                return sprite;
+        }
+        return GetPlayerIconSprite(player?.id ?? 0);
+    }
+
     #endregion
 
     #region Round Methods

@@ -23,6 +23,12 @@ public class InputReceiver : MonoBehaviour
     /// <summary>Fired when a player swipes the DJ slider to switch lane.</summary>
     public static event Action<SliderInputEvent> OnSliderInput;
 
+    /// <summary>Fired when a player submits a symbol + name selection from the mobile select screen.</summary>
+    public static event Action<string, SymbolSelectMessage> OnSymbolSelect;
+
+    /// <summary>Fired when a phone sends a reconnect handshake (has a valid cookie for this lobby).</summary>
+    public static event Action<string, RejoinMessage> OnRejoin;
+
     // ─────────────────────────────────────────────────────────────────────
 
     private WebSocketServer _server;
@@ -78,6 +84,18 @@ public class InputReceiver : MonoBehaviour
                 );
                 Debug.Log($"[Input] {sliderEvent.player} slider {sliderEvent.direction}");
                 OnSliderInput?.Invoke(sliderEvent);
+                break;
+
+            case "symbol_select":
+                var rawSymbol = JsonUtility.FromJson<SymbolSelectMessage>(json);
+                Debug.Log($"[Input] {clientId} symbol_select symbol={rawSymbol.symbol} name={rawSymbol.name}");
+                OnSymbolSelect?.Invoke(clientId, rawSymbol);
+                break;
+
+            case "rejoin":
+                var rawRejoin = JsonUtility.FromJson<RejoinMessage>(json);
+                Debug.Log($"[Input] {clientId} rejoin lobbyId={rawRejoin.lobbyId} token={rawRejoin.reconnectToken}");
+                OnRejoin?.Invoke(clientId, rawRejoin);
                 break;
 
             default:

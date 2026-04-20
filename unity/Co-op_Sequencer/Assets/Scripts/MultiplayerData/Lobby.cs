@@ -48,4 +48,34 @@ public class Lobby
     {
         return players.Find(p => !p.connected);
     }
+
+    // Instrument symbols players can choose from on the mobile controller.
+    public static readonly SymbolType[] SelectableSymbols =
+    {
+        SymbolType.Guitar,
+        SymbolType.Drums,
+        SymbolType.Trumpet,
+        SymbolType.Microphone,
+    };
+
+    public bool IsSymbolTaken(SymbolType symbol)
+    {
+        return players.Exists(p => p.hasSymbol && p.symbol == symbol);
+    }
+
+    public List<SymbolType> GetAvailableSymbols()
+    {
+        var list = new List<SymbolType>();
+        foreach (var s in SelectableSymbols)
+            if (!IsSymbolTaken(s)) list.Add(s);
+        return list;
+    }
+
+    public List<SymbolType> GetTakenSymbols()
+    {
+        var list = new List<SymbolType>();
+        foreach (var s in SelectableSymbols)
+            if (IsSymbolTaken(s)) list.Add(s);
+        return list;
+    }
 }

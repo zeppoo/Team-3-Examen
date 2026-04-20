@@ -51,9 +51,13 @@ public class StartGameButton : MonoBehaviour
 
     void Update()
     {
-        // Keep the button interactable state in sync with the player count.
+        // Keep the button interactable: needs enough players AND every player must have claimed a symbol.
         if (startButton != null && _lobbyManager != null)
-            startButton.interactable = _lobbyManager.Lobby.players.Count >= minPlayers;
+        {
+            var players = _lobbyManager.Lobby.players;
+            bool allClaimed = players.TrueForAll(p => p.hasSymbol);
+            startButton.interactable = players.Count >= minPlayers && allClaimed;
+        }
     }
 
     private void OnStartClicked()
@@ -68,6 +72,12 @@ public class StartGameButton : MonoBehaviour
         if (count < minPlayers)
         {
             Debug.LogWarning($"[StartGameButton] Not enough players ({count}/{minPlayers}).");
+            return;
+        }
+
+        if (!_lobbyManager.Lobby.players.TrueForAll(p => p.hasSymbol))
+        {
+            Debug.LogWarning("[StartGameButton] Cannot start: not all players have claimed a symbol.");
             return;
         }
 

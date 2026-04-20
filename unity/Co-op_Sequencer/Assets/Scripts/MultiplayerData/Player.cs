@@ -8,6 +8,9 @@ public class Player
     public string     color;         // hex, e.g. "#FF0000"
     public bool       connected = true;
     public int        lane;          // current lane index (0-based)
+    public SymbolType symbol;        // instrument symbol claimed by the player
+    public bool       hasSymbol;     // true once the player has claimed a symbol
+    public string     displayName = ""; // chosen display name (empty until set)
 
     public Player(int id, string clientId, string color)
     {

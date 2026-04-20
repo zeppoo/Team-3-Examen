@@ -47,6 +47,7 @@
 		"vitest-browser-svelte": "^2.0.2"
 	},
 	"dependencies": {
+		"jsqr": "^1.4.0",
 		"ws": "^8.20.0"
 	}
 }
