@@ -5,9 +5,6 @@ TagManager:
   serializedVersion: 3
   tags:
   - Symbol
-  - Light
-  - ConeLight
-  - HypeBar
   layers:
   - Default
   - TransparentFX
@@ -15,7 +12,7 @@ TagManager:
   - 
   - Water
   - UI
-  - HypeBar
+  - 
   - 
   - 
   - 
