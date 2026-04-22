@@ -56,7 +56,7 @@ Material:
         m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
-    - _Circle_Density: 8.68
+    - _Circle_Density: 14
     - _FallOf_Treshhold: 0.67
     - _Lit_Threshold: 0.6
     - _QueueControl: 0

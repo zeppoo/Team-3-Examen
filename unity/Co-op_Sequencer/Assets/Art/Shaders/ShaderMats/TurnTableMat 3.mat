@@ -56,9 +56,9 @@ Material:
         m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
-    - _Circle_Density: 6.78
+    - _Circle_Density: 14
     - _FallOf_Treshhold: 1.35
-    - _Lit_Threshold: 1.25
+    - _Lit_Threshold: 1.2
     - _QueueControl: 0
     - _QueueOffset: 0
     - _Rotation: 0
@@ -66,7 +66,7 @@ Material:
     - _Softness: 0
     - _USE_SCREEN_SPACE: 1
     m_Colors:
-    - _BaseColor: {r: 0.3660378, g: 0.3660378, b: 0.3660378, a: 1}
+    - _BaseColor: {r: 0.21568628, g: 0.21568628, b: 0.21568628, a: 1}
     - _Dot_Color: {r: 0, g: 0, b: 0, a: 1}
   m_BuildTextureStacks: []
   m_AllowLocking: 1
