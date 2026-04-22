@@ -67,7 +67,7 @@ public class PlayerHandGenerator : MonoBehaviour
 
         List<Sprite> availableSymbols = new List<Sprite>(symbols);
 
-        // ✅ UPDATED TYPE
+        //  UPDATED TYPE
         List<PlayerHand> dealtHandsForExport = new List<PlayerHand>();
 
         for (int i = 0; i < playerCount; i++)
@@ -101,7 +101,7 @@ public class PlayerHandGenerator : MonoBehaviour
                 }
             }
 
-            // ✅ WRAP EACH HAND
+            // WRAP EACH HAND
             dealtHandsForExport.Add(new PlayerHand { cards = thisPlayerHand });
         }
 
@@ -110,7 +110,7 @@ public class PlayerHandGenerator : MonoBehaviour
 
         Debug.Log("Dealt hands JSON: " + lastDealtHandsJson);
 
-        // ✅ SEND IMMEDIATELY
+        // SEND IMMEDIATELY
         if (receiver != null)
         {
             receiver.ReceiveJson(lastDealtHandsJson);
