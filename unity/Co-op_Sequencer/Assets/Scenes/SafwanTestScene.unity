@@ -124,6 +124,11 @@ RectTransform:
   m_CorrespondingSourceObject: {fileID: 5771480189543313005, guid: 25d96fb26fb1b5b428cff0e453cee9d4, type: 3}
   m_PrefabInstance: {fileID: 3348058702628689340}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &135688391 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 3003883163229489052, guid: 7a3b9f019d75c65438b91305116e4173, type: 3}
+  m_PrefabInstance: {fileID: 1390345825898359518}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &166476020
 GameObject:
   m_ObjectHideFlags: 0
@@ -580,12 +585,24 @@ MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 3674870279126402375, guid: 7a3b9f019d75c65438b91305116e4173, type: 3}
   m_PrefabInstance: {fileID: 1390345825898359518}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
+  m_GameObject: {fileID: 135688391}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 15405b322bc8d134fb362abe93d3eb54, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SymbolSequenceMaker
+--- !u!114 &882561456
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 135688391}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9a0ab1b5da1e7f749886f1dd39bab44e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SymbollManagerUi
 --- !u!1 &974738965
 GameObject:
   m_ObjectHideFlags: 0
@@ -929,6 +946,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1387155378}
   - component: {fileID: 1387155379}
+  - component: {fileID: 1387155380}
   m_Layer: 0
   m_Name: GameManager
   m_TagString: Untagged
@@ -978,6 +996,21 @@ MonoBehaviour:
     score: 0
     goodPoint: 10
     failPoints: 20
+--- !u!114 &1387155380
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1387155377}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a2a7e9ac69feba744ae880d663dccf60, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::RoundManager
+  roundCounter: 0
+  allowInput: 1
+  timerSlider: {fileID: 1776839340}
 --- !u!1 &1394546767
 GameObject:
   m_ObjectHideFlags: 0
@@ -1089,6 +1122,17 @@ RectTransform:
   m_CorrespondingSourceObject: {fileID: 6127302354315256352, guid: 6f516ed7fb4a9e64d903b4f742cd768f, type: 3}
   m_PrefabInstance: {fileID: 776086581}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &1776839340 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 2015062160587119887, guid: 7a3b9f019d75c65438b91305116e4173, type: 3}
+  m_PrefabInstance: {fileID: 1390345825898359518}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 67db9e8f0e2ae9c40bc1e2b64352a6b4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Slider
 --- !u!1 &2064275633 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 5547510736333618126, guid: 6f516ed7fb4a9e64d903b4f742cd768f, type: 3}
@@ -1225,7 +1269,10 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 3003883163229489052, guid: 7a3b9f019d75c65438b91305116e4173, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 882561456}
   m_SourcePrefab: {fileID: 100100000, guid: 7a3b9f019d75c65438b91305116e4173, type: 3}
 --- !u!1001 &3348058702628689340
 PrefabInstance:

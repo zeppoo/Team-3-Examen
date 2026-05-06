@@ -3,198 +3,235 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
+/// <summary>
+/// Handles generation of symbol sequences, round progression, and basic sequence state.
+/// This script is responsible for building the active symbol set and coordinating round flow.
+/// </summary>
 public class SymbolSequenceMaker : MonoBehaviour
 {
-    #region Serialized Fields
     [SerializeField] public List<Sprite> symbols;
     [SerializeField] public List<Image> imagePos;
+
+    // Runtime-generated sequence data
     [SerializeField] public List<Sprite> availableSymbols = new List<Sprite>();
-    [SerializeField] private List<GameObject> playerHand = new List<GameObject>();
-    [SerializeField] private Slider timerSlider;
-    #endregion
 
-    #region Private Fields
-    private List<GameObject> players = new List<GameObject>();
+    // Player-related symbols (hand system)
+    [SerializeField] public List<GameObject> playerHand = new List<GameObject>();
+
     private PlayerHandGenerator playerHandGenerator;
-    private ScoreCounter scoreCounter;
 
-    private int roundCounter = 0;
-    private int activeImages = 3;
+    public int activeImages = 3;
 
-    private int timer;
-    private float currentTime;
-    private float timeLimit;
-
+    // Round flow control flags
     private bool canGoToNextRound = false;
     private bool finishedRound = false;
-    #endregion
 
-    #region Public / Internal State
+    // Tracks current input progress through sequence
     internal int nextSymbol;
 
-    internal List<Sprite> correctSymbols = new List<Sprite>();
-    internal List<Sprite> incorrectSymbols = new List<Sprite>();
+    // Stores correctness results for the current sequence attempt
     internal List<bool> clickResults = new List<bool>();
 
-    // JSON representation of the currently active symbol sequence (by sprite name)
+    // JSON representation of current sequence (used for debugging / external systems)
     [System.NonSerialized] public string currentSequenceJson;
 
-    public bool allowInput = true;
-    #endregion
+    private RoundManager roundManager;
+    private ScoreCounter scoreSystem;
 
-    #region Unity Lifecycle
     private void Start()
     {
-        scoreCounter = FindAnyObjectByType<ScoreCounter>();
+        InitializeManagers();
+        InitializeImagePositions();
+        InitializePlayerHand();
+    }
 
-        imagePos = new List<Image>();
-        foreach (Image img in GetComponentsInChildren<Image>())
+    private void Update()
+    {
+        // Allows manual testing (space) or auto-advance when sequence is completed
+        if (Input.GetKeyDown(KeyCode.Space) ||
+            (nextSymbol >= activeImages && canGoToNextRound))
         {
-            if (img.gameObject == this.gameObject) continue;
-            imagePos.Add(img);
+            GenerateSequence();
+        }
+    }
+
+    /// <summary>
+    /// Main entry point for creating a new symbol sequence.
+    /// Handles round checks, resets, generation, and serialization.
+    /// </summary>
+    public void GenerateSequence()
+    {
+        // Special scoring round logic (every 5 rounds up to 20)
+        if (HandleScoreRound())
+        {
+            return;
         }
 
+        ResetFinishedRound();
+        StartNewRound();
+        PopulateSequence();
+        SerializeCurrentSequence();
+    }
+
+    /// <summary>
+    /// Finds and stores references to core systems.
+    /// </summary>
+    private void InitializeManagers()
+    {
+        roundManager = GameObject.Find("GameManager")
+            .GetComponent<RoundManager>();
+
+        scoreSystem = GameObject.Find("HypeBar")
+            .GetComponent<ScoreCounter>();
+    }
+
+    /// <summary>
+    /// Collects UI image slots used for displaying the sequence.
+    /// </summary>
+    private void InitializeImagePositions()
+    {
+        imagePos = new List<Image>();
+
+        foreach (Image img in GetComponentsInChildren<Image>())
+        {
+            if (img.gameObject == gameObject)
+            {
+                continue;
+            }
+
+            imagePos.Add(img);
+        }
+    }
+
+    /// <summary>
+    /// Initializes player hand system and assigns starting symbols.
+    /// </summary>
+    private void InitializePlayerHand()
+    {
         playerHandGenerator = GetComponent<PlayerHandGenerator>();
+
         playerHandGenerator.DealHandToPlayers(symbols);
 
         playerHand.AddRange(GameObject.FindGameObjectsWithTag("Player"));
     }
 
-    private void Update()
+    /// <summary>
+    /// Handles special scoring rounds and blocks normal sequence flow if active.
+    /// </summary>
+    private bool HandleScoreRound()
     {
-        if (Input.GetKeyDown(KeyCode.Space))
+        bool isScoreRound =
+            roundManager.roundCounter > 0 &&
+            roundManager.roundCounter % 5 == 0 &&
+            roundManager.roundCounter <= 20 &&
+            !finishedRound;
+
+        if (!isScoreRound)
         {
-            GenerateSequence();
+            return false;
         }
 
-        if (nextSymbol >= activeImages && canGoToNextRound)
-        {
-            GenerateSequence();
-        }
+        roundManager.allowInput = false;
+        canGoToNextRound = false;
+        finishedRound = true;
+
+        scoreSystem.isCalculatingScore = true;
+        StartCoroutine(scoreSystem.CalculateScore());
+
+        return true;
     }
-    #endregion
 
-    #region Core Gameplay Logic
-    private void GenerateSequence()
+    /// <summary>
+    /// Clears state after a completed round if needed.
+    /// </summary>
+    private void ResetFinishedRound()
     {
-        if (roundCounter > 0 && roundCounter % 5 == 0 && roundCounter <= 20 && !finishedRound)
+        if (!finishedRound)
         {
-            allowInput = false;
-            canGoToNextRound = false;
-            finishedRound = true;
-
-            scoreCounter.isCalculatingScore = true;
-            StartCoroutine(ListenToMusic());
             return;
         }
 
-        if (finishedRound)
-        {
-            clickResults.Clear();
-            finishedRound = false;
-        }
+        clickResults.Clear();
+        finishedRound = false;
+    }
 
-        allowInput = true;
+    /// <summary>
+    /// Prepares variables for a new round.
+    /// </summary>
+    private void StartNewRound()
+    {
+        roundManager.allowInput = true;
         canGoToNextRound = true;
 
-        RoundCounter();
-        nextSymbol = 0;
+        roundManager.RoundCounter();
 
+        nextSymbol = 0;
+    }
+
+    /// <summary>
+    /// Generates a random sequence of symbols for the current round.
+    /// </summary>
+    private void PopulateSequence()
+    {
         List<Sprite> pool = new List<Sprite>(symbols);
 
         availableSymbols.Clear();
 
         for (int i = 0; i < activeImages; i++)
         {
-            int randomIndex = Random.Range(0, pool.Count);
-            Sprite chosenSprite = pool[randomIndex];
-
-            imagePos[i].sprite = chosenSprite;
-            availableSymbols.Add(chosenSprite);
-
-            imagePos[i].color = Color.white;
-            imagePos[i].enabled = true;
-
-            pool.RemoveAt(randomIndex);
+            AssignRandomSymbolToPosition(pool, i);
         }
+    }
 
-        // Build a simple name list and serialize the current sequence to JSON
+    /// <summary>
+    /// Assigns a randomly selected sprite to a UI slot.
+    /// </summary>
+    private void AssignRandomSymbolToPosition(List<Sprite> pool, int index)
+    {
+        int randomIndex = Random.Range(0, pool.Count);
+
+        Sprite chosenSprite = pool[randomIndex];
+
+        imagePos[index].sprite = chosenSprite;
+
+        availableSymbols.Add(chosenSprite);
+
+        ResetImageState(index);
+
+        pool.RemoveAt(randomIndex);
+    }
+
+    /// <summary>
+    /// Resets visual state of a UI image slot.
+    /// </summary>
+    private void ResetImageState(int index)
+    {
+        imagePos[index].color = Color.white;
+        imagePos[index].enabled = true;
+    }
+
+    /// <summary>
+    /// Converts current sequence into JSON format for debugging or external use.
+    /// </summary>
+    private void SerializeCurrentSequence()
+    {
         List<string> sequenceNames = new List<string>();
-        foreach (var sprite in availableSymbols)
+
+        foreach (Sprite sprite in availableSymbols)
         {
-            sequenceNames.Add(sprite != null ? sprite.name : string.Empty);
+            sequenceNames.Add(
+                sprite != null ? sprite.name : string.Empty
+            );
         }
 
-        currentSequenceJson = JsonUtility.ToJson(new SequenceJsonWrapper { sequence = sequenceNames });
+        currentSequenceJson = JsonUtility.ToJson(
+            new SequenceJsonWrapper
+            {
+                sequence = sequenceNames
+            }
+        );
+
         Debug.Log("Current sequence JSON: " + currentSequenceJson);
-        
-    }
-
-    private void RoundCounter()
-    {
-        roundCounter++;
-
-        incorrectSymbols.Clear();
-        correctSymbols.Clear();
-
-        activeImages = Mathf.Min(10, 3 + (roundCounter - 1) / 3 + playerHand.Count);
-
-        allowInput = true;
-
-        StartCoroutine(TimerCoroutine());
-    }
-    #endregion
-
-    #region Player Interaction
-    public void MarkSymbolAsFound(int symbolIndex, Color newColor)
-    {
-        if (symbolIndex < imagePos.Count)
-        {
-            imagePos[symbolIndex].color = newColor;
-        }
-    }
-    #endregion
-
-    #region Coroutines
-    IEnumerator TimerCoroutine()
-    {
-        timeLimit = 5f - (roundCounter * 0.5f);
-        timeLimit = Mathf.Max(timeLimit, 5f);
-
-        currentTime = timeLimit;
-
-        while (currentTime > 0)
-        {
-            currentTime -= Time.deltaTime;
-            timerSlider.value = currentTime / timeLimit;
-            yield return null;
-        }
-
-        for (int i = nextSymbol; i < activeImages && i < availableSymbols.Count; i++)
-        {
-            incorrectSymbols.Add(availableSymbols[i]);
-        }
-
-        GenerateSequence();
-    }
-
-    public IEnumerator ListenToMusic()
-    {
-        scoreCounter.UpdateScore();
-
-        yield return new WaitUntil(() => scoreCounter.finishedCalculating == true);
-
-        foreach (var img in imagePos)
-        {
-            img.enabled = false;
-        }
-
-        yield return new WaitForSeconds(5f);
-
-        scoreCounter.isCalculatingScore = false;
-        scoreCounter.finishedCalculating = false;
-
-        GenerateSequence();
     }
 
     [System.Serializable]
@@ -202,24 +239,4 @@ public class SymbolSequenceMaker : MonoBehaviour
     {
         public List<string> sequence;
     }
-    #endregion
-
-
-    public void HighlightNextSymbol()
-    {
-        for (int i = 0; i < imagePos.Count; i++)
-        {
-            RectTransform rect = imagePos[i].rectTransform;
-
-            if (i == nextSymbol)
-            {
-                rect.sizeDelta = new Vector2(120, 120);
-            }
-            else
-            {
-                rect.sizeDelta = new Vector2(100, 100);
-            }
-        }
-    }
-
 }
