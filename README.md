@@ -14,6 +14,36 @@ Maak ook een overzicht van alle onderdelen met een link naar de map waarin deze 
 
 Bijv..
 
+Safwan Almashnouk
+  * De prototype van de game
+  * Game Management
+    * [Game manager](https://github.com/zeppoo/Team-3-Examen/blob/safwan_prototype/unity/Co-op_Sequencer/Assets/Scripts/GameManager/GameManager.cs)
+    * [Round manager](https://github.com/zeppoo/Team-3-Examen/blob/safwan_prototype/unity/Co-op_Sequencer/Assets/Scripts/GameManager/RoundManager.cs)
+    * [Symbol sprite manager](https://github.com/zeppoo/Team-3-Examen/blob/safwan_prototype/unity/Co-op_Sequencer/Assets/Scripts/GameManager/SymbollManagerUi.cs)
+    * [Win condition](https://github.com/zeppoo/Team-3-Examen/blob/safwan_winloseCondition/unity/Co-op_Sequencer/Assets/Scripts/WinLose%20Condition/WinCondition.cs)
+    * [Lose condition](https://github.com/zeppoo/Team-3-Examen/blob/safwan_winloseCondition/unity/Co-op_Sequencer/Assets/Scripts/WinLose%20Condition/LoseCondition.cs)
+
+* Data Types
+    * [Round data](https://github.com/zeppoo/Team-3-Examen/blob/safwan_prototype/unity/Co-op_Sequencer/Assets/Scripts/DataTypes/RoundData.cs)
+    * [Score data](https://github.com/zeppoo/Team-3-Examen/blob/safwan_prototype/unity/Co-op_Sequencer/Assets/Scripts/DataTypes/ScoreData.cs)
+    * [Symbol data](https://github.com/zeppoo/Team-3-Examen/blob/safwan_prototype/unity/Co-op_Sequencer/Assets/Scripts/DataTypes/SymbolData.cs)
+
+* Player Feedback
+    * [Player input feedback](https://github.com/zeppoo/Team-3-Examen/blob/safwan_prototype/unity/Co-op_Sequencer/Assets/Scripts/Player%20Feedback/PlayerInputFeedback.cs)
+
+* Symbol Generation & Sequence Systems
+    * [Player hand generator](https://github.com/zeppoo/Team-3-Examen/blob/safwan_prototype/unity/Co-op_Sequencer/Assets/Scripts/SymbolGenerator/PlayerHandGenerator.cs)
+    * [Score counter](https://github.com/zeppoo/Team-3-Examen/blob/safwan_prototype/unity/Co-op_Sequencer/Assets/Scripts/SymbolGenerator/ScoreCounter.cs)
+    * [Sequence input](https://github.com/zeppoo/Team-3-Examen/blob/safwan_prototype/unity/Co-op_Sequencer/Assets/Scripts/SymbolGenerator/SequenceInput.cs)
+    * [Symbol sequence maker](https://github.com/zeppoo/Team-3-Examen/blob/safwan_prototype/unity/Co-op_Sequencer/Assets/Scripts/SymbolGenerator/SymbolSequenceMaker.cs)
+ 
+* Visual Feedback
+    * [HypeBar](https://github.com/zeppoo/Team-3-Examen/blob/develop/unity/Co-op_Sequencer/Assets/Scripts/UI/HypeBar.cs)
+    * [HypeBar animation controller](https://github.com/zeppoo/Team-3-Examen/blob/develop/unity/Co-op_Sequencer/Assets/Scripts/UI/HypeBarAnimationController.cs)
+
+      
+
+
 Student X:
   * [Wave System](https://github.com/erwinhenraat/VoorbeeldExamenRepo/tree/master/src/some)
   * [Some other mechanic X](https://github.com/erwinhenraat/VoorbeeldExamenRepo/tree/master/src/mechanic_x)
