@@ -41,7 +41,32 @@ Safwan Almashnouk
     * [HypeBar](https://github.com/zeppoo/Team-3-Examen/blob/develop/unity/Co-op_Sequencer/Assets/Scripts/UI/HypeBar.cs)
     * [HypeBar animation controller](https://github.com/zeppoo/Team-3-Examen/blob/develop/unity/Co-op_Sequencer/Assets/Scripts/UI/HypeBarAnimationController.cs)
 
-      
+   ### flowchart voor de gameplay prototype
+```mermaid
+      flowchart TD
+    %% Clean, structured layout with aligned branches
+    A([Start]) --> B[Give each player a set of symbols]
+
+    B --> C[Generate a sequence of symbols]
+    B --> D[Start Round Timer]
+
+    C --> E[Player inputs symbols]
+
+    E --> F{Correct?}
+    F -- Yes --> G[Score Up]
+    F -- No --> H[Score Down]
+
+    E --> I{Finished inputting?}
+    I -- No --> E
+    I -- Yes --> C
+
+    D --> J{Timer ran out?}
+    J -- No --> I
+    J -- Yes --> K[Unclicked = minus points]
+```
+### Visual Sheet of Prototype
+<img width="4182" height="3649" alt="ProtoVisualSheet" src="https://github.com/user-attachments/assets/09e42d89-a5b7-4326-9c8f-d97e332966a1" />
+
 
 
 Student X:
@@ -85,9 +110,8 @@ more_lev -->|yes, there's more| next_lev(start next level)
 more_lev -->|no more levels| end_d((end))
 next_lev --> start
 
-
-
 ```
+
 ### class diagram voor game entities:
 
 ```mermaid
