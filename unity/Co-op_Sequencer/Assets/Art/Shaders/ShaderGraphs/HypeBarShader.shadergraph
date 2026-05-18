@@ -1332,7 +1332,7 @@
     "m_Title": "create gradient color effect",
     "m_Position": {
         "x": -2572.0,
-        "y": 547.3333740234375
+        "y": 547.3333129882813
     }
 }
 
@@ -1382,8 +1382,8 @@
     "m_ObjectId": "11804410a79c4c97b4958d11b722abbb",
     "m_Title": "Slider",
     "m_Position": {
-        "x": -698.6666259765625,
-        "y": 925.9999389648438
+        "x": -698.6666870117188,
+        "y": 926.0
     }
 }
 
@@ -2752,8 +2752,8 @@
     "m_ObjectId": "3a52b323e936485e8af02952d80a266e",
     "m_Title": "Create voronoi animation",
     "m_Position": {
-        "x": -2138.0,
-        "y": 68.0000228881836
+        "x": -2138.000244140625,
+        "y": 68.0
     }
 }
 
@@ -5139,8 +5139,8 @@
     "m_ObjectId": "92d200462d8b41c5ba3bca59fef17dff",
     "m_Title": "Add HypeBar Textures",
     "m_Position": {
-        "x": -378.0,
-        "y": -186.0
+        "x": -377.9999694824219,
+        "y": -186.00001525878907
     }
 }
 
