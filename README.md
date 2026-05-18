@@ -65,7 +65,12 @@ Safwan Almashnouk
     J -- Yes --> K[Unclicked = minus points]
 ```
 ### Visual Sheet of Prototype
-<img width="4182" height="3649" alt="ProtoVisualSheet" src="https://github.com/user-attachments/assets/09e42d89-a5b7-4326-9c8f-d97e332966a1" />
+<img width="4182" height="3649" alt="ProtoVisualSheet" src="https://github.com/user-attachments/assets/b0e0afce-75da-418b-bff6-747ef62610dd" />
+
+
+### Visual Sheet hoe het nieuwe camera werkt 
+<img width="1701" height="482" alt="image" src="https://github.com/user-attachments/assets/bf03afe4-bcbd-4375-93e1-29dd9aebb451" />
+
 
 
 
