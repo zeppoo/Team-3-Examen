@@ -24,8 +24,7 @@ Material:
   m_Shader: {fileID: -6465566751694194690, guid: 8fcad4dd9abd3e048b02ed5aaa5e4c8d, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
-  m_ValidKeywords:
-  - _HYPEBARFULL
+  m_ValidKeywords: []
   m_InvalidKeywords: []
   m_LightmapFlags: 4
   m_EnableInstancingVariants: 0
@@ -84,9 +83,9 @@ Material:
         m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
-    - _Fill: 1
+    - _Fill: 0.5
     - _Full: 0
-    - _HYPEBARFULL: 1
+    - _HYPEBARFULL: 0
     - _HypeBarFull: 0
     - _QueueControl: 0
     - _QueueOffset: 2
